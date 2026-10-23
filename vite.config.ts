@@ -9,6 +9,12 @@ export default defineConfig({
   plugins: [inspectAttr(), react()],
   server: {
     port: 3000,
+    proxy: {
+      '/api': {
+        target: 'https://vsoa.vercel.app',
+        changeOrigin: true,
+      },
+    },
   },
   resolve: {
     alias: {

@@ -113,8 +113,7 @@ export function ElectionsProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     setError('')
     try {
-      const endpoint = import.meta.env.VITE_ELECTIONS_API_URL ??
-        (import.meta.env.DEV ? 'https://vsoa.vercel.app/api/elections' : '/api/elections')
+      const endpoint = import.meta.env.VITE_ELECTIONS_API_URL ?? '/api/elections'
       const response = await fetch(endpoint, { headers: { Accept: 'application/json' } })
       if (!response.ok) throw new Error(`Election service returned ${response.status}`)
       const data = await response.json() as { elections?: ApiElection[]; error?: string }
