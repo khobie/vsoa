@@ -35,35 +35,30 @@ export default async function handler(req: any, res: any) {
     }
     const status = action === 'approve' ? 'APPROVED' : 'REJECTED'
 
-    const updated = await sql.transaction(async (transaction: any) => {
-      const rows = await transaction`
-        SELECT id, position_id, name, manifesto, bio, submitted_at
-        FROM candidate_applications WHERE id = ${id} FOR UPDATE`
-      const application = rows[0]
-      if (!application) throw new Error('NOT_FOUND')
+    const rows = await sql`
+      SELECT id, position_id, name, manifesto, bio, submitted_at
+      FROM candidate_applications WHERE id = ${id}`
+    const application = rows[0]
+    if (!application) return res.status(404).json({ error: 'Application not found' })
 
-      if (action === 'approve') {
-        await transaction`
-          INSERT INTO candidates
-            (application_id, position_id, name, faculty, manifesto, bio, status, submitted_at, reviewed_at, reviewed_by)
-          VALUES
-            (${id}, ${application.position_id}, ${application.name}, 'School of Anaesthesia Ridge',
-             ${application.manifesto}, ${application.bio}, 'APPROVED', ${application.submitted_at}, now(), ${user.id})
-          ON CONFLICT (application_id) WHERE application_id IS NOT NULL DO UPDATE SET
-            position_id = EXCLUDED.position_id, name = EXCLUDED.name, manifesto = EXCLUDED.manifesto,
-            bio = EXCLUDED.bio, status = 'APPROVED', reviewed_at = now(), reviewed_by = ${user.id}, updated_at = now()`
-      } else {
-        await transaction`DELETE FROM candidates WHERE application_id = ${id}`
-      }
+    const reviewQuery = sql`
+      UPDATE candidate_applications
+      SET status = ${status}::candidate_status, reviewed_at = now(), reviewed_by = ${user.id}
+      WHERE id = ${id}
+      RETURNING id, status`
+    const ballotQuery = action === 'approve' ? sql`
+      INSERT INTO candidates
+        (application_id, position_id, name, faculty, manifesto, bio, status, submitted_at, reviewed_at, reviewed_by)
+      VALUES
+        (${id}, ${application.position_id}, ${application.name}, 'School of Anaesthesia Ridge',
+         ${application.manifesto}, ${application.bio}, 'APPROVED', ${application.submitted_at}, now(), ${user.id})
+      ON CONFLICT (application_id) WHERE application_id IS NOT NULL DO UPDATE SET
+        position_id = EXCLUDED.position_id, name = EXCLUDED.name, manifesto = EXCLUDED.manifesto,
+        bio = EXCLUDED.bio, status = 'APPROVED', reviewed_at = now(), reviewed_by = ${user.id}, updated_at = now()`
+      : sql`DELETE FROM candidates WHERE application_id = ${id}`
 
-      const result = await transaction`
-        UPDATE candidate_applications
-        SET status = ${status}::candidate_status, reviewed_at = now(), reviewed_by = ${user.id}
-        WHERE id = ${id}
-        RETURNING id, status`
-      return result[0]
-    })
-    return res.status(200).json({ application: updated })
+    const results = await sql.transaction([ballotQuery, reviewQuery])
+    return res.status(200).json({ application: results[1][0] })
   } catch (error: any) {
     if (error?.message === 'NOT_FOUND') return res.status(404).json({ error: 'Application not found' })
     return res.status(500).json({ error: 'Unable to process the candidate application', detail: String(error?.message ?? error).slice(0, 200) })
