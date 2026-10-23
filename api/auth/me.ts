@@ -1,8 +1,7 @@
-import { getSessionUser, methodNotAllowed } from './_utils'
-
 export default async function handler(req: any, res: any) {
-  if (req.method !== 'GET') return methodNotAllowed(res, 'GET')
   try {
+    const { getSessionUser, methodNotAllowed } = await import('./_utils')
+    if (req.method !== 'GET') return methodNotAllowed(res, 'GET')
     const user = await getSessionUser(req)
     res.setHeader('Cache-Control', 'no-store')
     if (!user) return res.status(401).json({ user: null })
