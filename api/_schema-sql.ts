@@ -100,6 +100,26 @@ export const DDL_STATEMENTS: string[] = [
      updated_at timestamptz NOT NULL DEFAULT now()
    )`,
 
+  `CREATE TABLE IF NOT EXISTS candidate_applications (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     position_id uuid NOT NULL REFERENCES positions(id) ON DELETE CASCADE,
+     institutional_id text NOT NULL,
+     email text NOT NULL,
+     name text NOT NULL,
+     year_group text,
+     manifesto text NOT NULL,
+     bio text NOT NULL,
+     status candidate_status NOT NULL DEFAULT 'SUBMITTED',
+     submitted_at timestamptz NOT NULL DEFAULT now(),
+     reviewed_at timestamptz,
+     reviewed_by uuid REFERENCES users(id),
+     UNIQUE (position_id, institutional_id)
+   )`,
+
+  `ALTER TABLE candidates ADD COLUMN IF NOT EXISTS application_id uuid REFERENCES candidate_applications(id)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_candidates_application ON candidates(application_id) WHERE application_id IS NOT NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_candidate_applications_status ON candidate_applications(status)`,
+
   `CREATE TABLE IF NOT EXISTS voter_eligibility (
      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
      voter_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,

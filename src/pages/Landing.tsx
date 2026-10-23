@@ -71,6 +71,14 @@ export default function Landing() {
               size="lg"
               variant="outline"
               className="border-blue-300 bg-transparent text-white hover:bg-blue-800 hover:text-white"
+              onClick={() => navigate('/aspirants/register')}
+            >
+              Aspirant registration
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-blue-300 bg-transparent text-white hover:bg-blue-800 hover:text-white"
               onClick={() => navigate('/results')}
             >
               View published results

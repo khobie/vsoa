@@ -16,6 +16,7 @@ import AdminVoters from './pages/admin/AdminVoters'
 import AdminResults from './pages/admin/AdminResults'
 import AdminAudit from './pages/admin/AdminAudit'
 import AdminSettings from './pages/admin/AdminSettings'
+import AspirantRegistration from './pages/AspirantRegistration'
 import RequireRole from './components/require-role'
 
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
       {/* Public */}
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/aspirants/register" element={<AspirantRegistration />} />
 
       {/* Shared voter shell; published results remain public. */}
       <Route element={<VoterLayout />}>
