@@ -1,0 +1,279 @@
+// ============================================================================
+// University E-Voting System — PostgreSQL schema (Neon) via Prisma
+// ----------------------------------------------------------------------------
+// CRITICAL DESIGN RULE — BALLOT SECRECY:
+//   ParticipationRecord (WHO voted) and AnonymousBallot (WHAT was voted) are
+//   deliberately NOT linked by any foreign key. One-person-one-vote is enforced
+//   by @@unique([voterId, electionId]) on ParticipationRecord, written in the
+//   SAME transaction as the AnonymousBallot insert. Admins can list participants
+//   and can tally ballots, but cannot join an identity to a ballot.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity & access
+// ---------------------------------------------------------------------------
+
+enum RoleName {
+  SUPER_ADMIN
+  COMMISSIONER
+  OFFICER
+  CANDIDATE
+  VOTER
+}
+
+model User {
+  id              String   @id @default(uuid())
+  institutionalId String   @unique // student / staff ID — unique per institution scope
+  email           String   @unique
+  passwordHash    String // Argon2id — never returned by any API
+  name            String
+  faculty         String?
+  department      String?
+  yearGroup       String?
+  isActive        Boolean  @default(true)
+  activatedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  roles          UserRole[]
+  eligibility    VoterEligibility[]
+  participation  ParticipationRecord[]
+  candidacies    Candidate[]
+  auditActions   AuditEvent[]
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  role      RoleName
+  createdAt DateTime @default(now())
+
+  @@unique([userId, role])
+}
+
+// ---------------------------------------------------------------------------
+// Elections
+// ---------------------------------------------------------------------------
+
+enum ElectionStatus {
+  DRAFT
+  SCHEDULED
+  OPEN
+  SUSPENDED
+  CLOSED
+  PUBLISHED
+}
+
+model Election {
+  id                 String          @id @default(uuid())
+  name               String
+  organization       String
+  description        String?
+  status             ElectionStatus  @default(DRAFT)
+  timezone           String          @default("Africa/Accra")
+  startAt            DateTime
+  endAt              DateTime
+  suspendedAt        DateTime?
+  suspensionReason   String?
+  createdById        String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  eligibilityGroups  ElectionGroup[]
+  positions          Position[]
+  eligibility        VoterEligibility[]
+  participation      ParticipationRecord[]
+  ballots            AnonymousBallot[]
+  tallies            TallyRecord[]
+  publication        ResultPublication?
+}
+
+model ElectionGroup {
+  id         String   @id @default(uuid())
+  election   Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  electionId String
+  label      String // e.g. "All students", "Faculty of Science", "Postgraduates"
+  filter     Json? // structured eligibility rule (faculty, level, etc.)
+
+  @@unique([electionId, label])
+}
+
+model Position {
+  id            String   @id @default(uuid())
+  election      Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  electionId    String
+  title         String
+  description   String?
+  maxSelections Int      @default(1)
+  allowAbstain  Boolean  @default(true)
+  sortOrder     Int      @default(0)
+
+  candidates Candidate[]
+  selections BallotSelection[]
+
+  @@unique([electionId, title])
+}
+
+enum CandidateStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+model Candidate {
+  id           String          @id @default(uuid())
+  position     Position        @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  positionId   String
+  // Candidate's own user account (if they can sign in) — restricted from voter data
+  user         User?           @relation(fields: [userId], references: [id])
+  userId       String?
+  name         String
+  photoUrl     String?
+  faculty      String?
+  manifesto    String?
+  bio          String?
+  status       CandidateStatus @default(DRAFT)
+  submittedAt  DateTime?
+  reviewedAt   DateTime?
+  reviewedById String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  selections BallotSelection[]
+}
+
+// ---------------------------------------------------------------------------
+// Eligibility & participation — WHO voted (no choices here, ever)
+// ---------------------------------------------------------------------------
+
+model VoterEligibility {
+  id         String   @id @default(uuid())
+  voter      User     @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  voterId    String
+  election   Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  electionId String
+  createdAt  DateTime @default(now())
+
+  @@unique([voterId, electionId])
+}
+
+model ParticipationRecord {
+  id           String    @id @default(uuid())
+  voter        User      @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  voterId      String
+  election     Election  @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  electionId   String
+  acceptedAt   DateTime  @default(now())
+  // One-way hash of the receipt code shown to the voter — confirms acceptance
+  // without storing anything about the ballot contents.
+  receiptHash  String    @unique
+
+  // THE core one-person-one-vote constraint. A second insert for the same
+  // (voter, election) fails and rolls back the whole ballot transaction.
+  @@unique([voterId, electionId])
+}
+
+// ---------------------------------------------------------------------------
+// Anonymous ballots — WHAT was voted (no voter identity here, ever)
+// ---------------------------------------------------------------------------
+
+model AnonymousBallot {
+  id         String   @id @default(uuid())
+  election   Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  electionId String
+  acceptedAt DateTime @default(now())
+  // Random ballot reference — NOT derived from the voter, NOT the receipt code.
+  ballotRef  String   @unique
+
+  selections BallotSelection[]
+
+  // NOTE: there is intentionally NO voterId column and NO relation to
+  // ParticipationRecord. Counts are reconciled by tally, not by joins.
+}
+
+model BallotSelection {
+  id          String          @id @default(uuid())
+  ballot      AnonymousBallot @relation(fields: [ballotId], references: [id], onDelete: Cascade)
+  ballotId    String
+  position    Position        @relation(fields: [positionId], references: [id])
+  positionId  String
+  candidate   Candidate?      @relation(fields: [candidateId], references: [id])
+  candidateId String? // null = blank/abstain for this position
+
+  @@unique([ballotId, positionId])
+}
+
+// ---------------------------------------------------------------------------
+// Tally & publication
+// ---------------------------------------------------------------------------
+
+model TallyRecord {
+  id            String   @id @default(uuid())
+  election      Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  electionId    String
+  computedAt    DateTime @default(now())
+  // JSON snapshot of per-position results — computed FROM AnonymousBallot rows,
+  // never entered by hand. Recounts create NEW records; old ones are kept.
+  results       Json
+  ballotCount   Int
+  eligibleCount Int
+  integrityHash String // hash of canonical results JSON — tamper evidence
+  isRecount     Boolean  @default(false)
+}
+
+model ResultPublication {
+  id              String      @id @default(uuid())
+  election        Election    @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  electionId      String      @unique
+  tally           TallyRecord @relation(fields: [tallyId], references: [id])
+  tallyId         String
+  verifiedById    String?
+  verifiedAt      DateTime?
+  publishedById   String?
+  publishedAt     DateTime?
+}
+
+// ---------------------------------------------------------------------------
+// Audit & security — append-only, hash-chained
+// ---------------------------------------------------------------------------
+
+model AuditEvent {
+  id         String   @id @default(uuid())
+  type       String // ELECTION_CREATED, CANDIDATE_APPROVED, ELECTION_OPENED, ...
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  actorLabel String? // display-safe label, or "system"
+  electionId String?
+  outcome    String // success | failure | warning
+  detail     String? // NEVER contains ballot choices
+  prevHash   String
+  hash       String   @unique // sha256(prevHash + payload) — tamper evidence
+  createdAt  DateTime @default(now())
+
+  @@index([electionId])
+  @@index([createdAt])
+}
+
+model SecurityEvent {
+  id        String   @id @default(uuid())
+  type      String // LOGIN_FAILURE, RATE_LIMITED, SESSION_ANOMALY, ...
+  severity  String // low | medium | high
+  subject   String? // e.g. institutional ID or IP range — no secrets
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
