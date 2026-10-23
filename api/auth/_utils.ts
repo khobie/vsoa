@@ -62,7 +62,7 @@ export async function getSessionUser(req: any): Promise<AuthUser | null> {
   const rows = await sql`
     SELECT u.id, u.institutional_id AS "institutionalId", u.email, u.name,
            u.faculty, u.department, u.year_group AS "yearGroup",
-           array_agg(r.role) AS roles
+           json_agg(r.role) AS roles
     FROM auth_sessions s
     JOIN users u ON u.id = s.user_id
     JOIN user_roles r ON r.user_id = u.id
