@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CandidateStatusBadge } from '@/components/StatusBadge'
-import { elections, formatDate, type Candidate, type CandidateStatus } from '@/lib/mock-data'
+import { formatDate, type Candidate, type CandidateStatus } from '@/lib/mock-data'
+import { useElections } from '@/components/elections-provider'
 
 interface Row extends Candidate {
   positionTitle: string
@@ -15,6 +16,7 @@ interface Row extends Candidate {
 }
 
 export default function AdminCandidates() {
+  const { elections } = useElections()
   const [tab, setTab] = useState<'pending' | 'all'>('pending')
   const [query, setQuery] = useState('')
   const [viewing, setViewing] = useState<Row | null>(null)
@@ -26,7 +28,7 @@ export default function AdminCandidates() {
           p.candidates.map((c) => ({ ...c, positionTitle: p.title, electionName: e.name }))
         )
       ),
-    []
+    [elections]
   )
 
   const filtered = rows.filter((r) => {
@@ -75,7 +77,9 @@ export default function AdminCandidates() {
                   {c.positionTitle} · {c.electionName}
                 </p>
               </div>
-              <p className="hidden text-xs text-muted-foreground sm:block">Submitted {formatDate(c.submittedAt)}</p>
+              <p className="hidden text-xs text-muted-foreground sm:block">
+                {c.submittedAt ? `Submitted ${formatDate(c.submittedAt)}` : 'Approved candidate'}
+              </p>
               <CandidateStatusBadge status={c.status as CandidateStatus} />
               <div className="flex items-center gap-1">
                 <Button variant="ghost" size="sm" onClick={() => setViewing(c)}>
@@ -126,7 +130,7 @@ export default function AdminCandidates() {
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-slate-50 p-3 text-xs text-muted-foreground">
                   <span>{viewing.faculty}</span>
-                  <span>Submitted {formatDate(viewing.submittedAt)}</span>
+                  <span>{viewing.submittedAt ? `Submitted ${formatDate(viewing.submittedAt)}` : 'Approved candidate'}</span>
                   <CandidateStatusBadge status={viewing.status as CandidateStatus} />
                 </div>
                 <p className="text-xs text-muted-foreground">

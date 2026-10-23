@@ -28,7 +28,8 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
-import { getElection, type Candidate } from '@/lib/mock-data'
+import { type Candidate } from '@/lib/mock-data'
+import { useElections } from '@/components/elections-provider'
 import { cn } from '@/lib/utils'
 
 type Step = 'instructions' | 'voting' | 'review' | 'submitting' | 'done'
@@ -38,6 +39,7 @@ const ABSTAIN = '__abstain__'
 export default function BallotPage() {
   const { electionId } = useParams()
   const navigate = useNavigate()
+  const { getElection } = useElections()
   const election = getElection(electionId ?? '')
 
   const [step, setStep] = useState<Step>('instructions')

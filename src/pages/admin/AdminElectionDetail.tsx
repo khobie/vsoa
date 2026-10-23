@@ -17,11 +17,13 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ElectionStatusBadge, CandidateStatusBadge, VerificationBadge } from '@/components/StatusBadge'
-import { getElection, formatDateTime, turnoutPercent } from '@/lib/mock-data'
+import { formatDateTime, turnoutPercent } from '@/lib/mock-data'
+import { useElections } from '@/components/elections-provider'
 
 export default function AdminElectionDetail() {
   const { electionId } = useParams()
   const navigate = useNavigate()
+  const { getElection } = useElections()
   const election = getElection(electionId ?? '')
 
   if (!election) {

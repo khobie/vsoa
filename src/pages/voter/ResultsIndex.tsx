@@ -2,11 +2,13 @@ import { useNavigate } from 'react-router'
 import { BarChart3, ChevronRight } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { publishedElections, formatDate, turnoutPercent } from '@/lib/mock-data'
+import { formatDate, turnoutPercent } from '@/lib/mock-data'
+import { useElections } from '@/components/elections-provider'
 
 export default function ResultsIndex() {
   const navigate = useNavigate()
-  const published = publishedElections()
+  const { elections } = useElections()
+  const published = elections.filter((election) => election.status === 'published')
 
   return (
     <div className="mx-auto max-w-4xl">

@@ -17,9 +17,11 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ElectionStatusBadge, VerificationBadge } from '@/components/StatusBadge'
-import { elections, tallies, formatDateTime, turnoutPercent, type Election } from '@/lib/mock-data'
+import { formatDateTime, turnoutPercent, type Election } from '@/lib/mock-data'
+import { useElections } from '@/components/elections-provider'
 
 function TallyPreview({ election }: { election: Election }) {
+  const { tallies } = useElections()
   const tallyList = tallies[election.id] ?? []
   if (tallyList.length === 0) {
     return <p className="text-sm text-muted-foreground">Tally will be computed when the election closes.</p>
@@ -58,6 +60,7 @@ function TallyPreview({ election }: { election: Election }) {
 
 export default function AdminResults() {
   const navigate = useNavigate()
+  const { elections } = useElections()
   const [verified, setVerified] = useState<Record<string, boolean>>({})
 
   const verifiable = elections.filter(

@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { InstitutionMark } from '@/components/InstitutionMark'
 import { ElectionStatusBadge } from '@/components/StatusBadge'
-import { elections, institution, openElections, formatDateTime, turnoutPercent } from '@/lib/mock-data'
+import { institution, formatDateTime, turnoutPercent } from '@/lib/mock-data'
+import { useElections } from '@/components/elections-provider'
 
 const features = [
   {
@@ -31,7 +32,8 @@ const features = [
 
 export default function Landing() {
   const navigate = useNavigate()
-  const open = openElections()
+  const { elections } = useElections()
+  const open = elections.filter((election) => election.status === 'open')
 
   return (
     <div className="min-h-screen bg-white">

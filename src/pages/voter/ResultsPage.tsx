@@ -6,13 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { VerificationBadge } from '@/components/StatusBadge'
-import { getElection, tallies, turnoutPercent, formatDateTime } from '@/lib/mock-data'
+import { turnoutPercent, formatDateTime } from '@/lib/mock-data'
+import { useElections } from '@/components/elections-provider'
 
 const CHART_COLORS = ['#1d4ed8', '#f59e0b', '#0ea5e9', '#8b5cf6', '#10b981']
 
 export default function ResultsPage() {
   const { electionId } = useParams()
   const navigate = useNavigate()
+  const { getElection, tallies } = useElections()
   const election = getElection(electionId ?? '')
 
   if (!election || election.status !== 'published') {

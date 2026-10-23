@@ -3,7 +3,8 @@ import { ScrollText, CheckCircle2, AlertTriangle, XCircle, Hash } from 'lucide-r
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { auditEvents, elections, formatDateTime } from '@/lib/mock-data'
+import { auditEvents, formatDateTime } from '@/lib/mock-data'
+import { useElections } from '@/components/elections-provider'
 import { cn } from '@/lib/utils'
 
 const outcomeIcon = {
@@ -13,6 +14,7 @@ const outcomeIcon = {
 }
 
 export default function AdminAudit() {
+  const { elections } = useElections()
   const [filter, setFilter] = useState('all')
 
   const filtered = auditEvents.filter(

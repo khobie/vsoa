@@ -3,19 +3,14 @@ import { Vote, CalendarClock, CheckCircle2, Archive, ChevronRight } from 'lucide
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ElectionStatusBadge } from '@/components/StatusBadge'
-import {
-  demoVoter,
-  openElections,
-  upcomingElections,
-  elections,
-  formatDateTime,
-  turnoutPercent,
-} from '@/lib/mock-data'
+import { demoVoter, formatDateTime, turnoutPercent } from '@/lib/mock-data'
+import { useElections } from '@/components/elections-provider'
 
 export default function VoterDashboard() {
   const navigate = useNavigate()
-  const open = openElections()
-  const upcoming = upcomingElections()
+  const { elections } = useElections()
+  const open = elections.filter((election) => election.status === 'open')
+  const upcoming = elections.filter((election) => election.status === 'scheduled')
   const past = elections.filter((e) => e.status === 'closed' || e.status === 'published')
 
   return (

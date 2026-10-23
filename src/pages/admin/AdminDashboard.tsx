@@ -15,14 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ElectionStatusBadge } from '@/components/StatusBadge'
 import { cn } from '@/lib/utils'
-import {
-  elections,
-  turnoutSeries,
-  securityAlerts,
-  openElections,
-  turnoutPercent,
-  formatDateTime,
-} from '@/lib/mock-data'
+import { turnoutSeries, securityAlerts, turnoutPercent, formatDateTime } from '@/lib/mock-data'
+import { useElections } from '@/components/elections-provider'
 
 const severityStyles = {
   low: 'border-blue-200 bg-blue-50 text-blue-700',
@@ -32,7 +26,8 @@ const severityStyles = {
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
-  const open = openElections()
+  const { elections } = useElections()
+  const open = elections.filter((election) => election.status === 'open')
   const openElection = open[0]
 
   const pendingCandidates = elections

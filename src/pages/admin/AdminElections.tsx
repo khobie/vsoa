@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ElectionStatusBadge, VerificationBadge } from '@/components/StatusBadge'
-import { elections, formatDateTime, turnoutPercent } from '@/lib/mock-data'
+import { formatDateTime, turnoutPercent } from '@/lib/mock-data'
+import { useElections } from '@/components/elections-provider'
 
 export default function AdminElections() {
   const navigate = useNavigate()
+  const { elections } = useElections()
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
