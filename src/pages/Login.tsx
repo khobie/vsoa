@@ -86,7 +86,7 @@ export default function Login() {
                 {busy ? 'Signing in…' : 'Sign in'}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
-                Access is limited to activated university accounts.
+                Access is limited to activated school accounts.
               </p>
             </form>
           </CardContent>
