@@ -11,6 +11,7 @@ export default async function handler(req: any, res: any) {
     const positionId = String(req.body?.positionId ?? '')
     const manifesto = String(req.body?.manifesto ?? '').trim()
     const bio = String(req.body?.bio ?? '').trim()
+    const photo = String(req.body?.photo ?? '')
 
     if (name.length < 3 || name.length > 120 || !institutionalId || institutionalId.length > 50) {
       return res.status(400).json({ error: 'Enter your full name and a valid institutional ID' })
@@ -20,6 +21,9 @@ export default async function handler(req: any, res: any) {
     }
     if (yearGroup.length > 50 || manifesto.length < 20 || manifesto.length > 5000 || bio.length < 10 || bio.length > 2000) {
       return res.status(400).json({ error: 'Check your year group, manifesto, and biography' })
+    }
+    if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(photo) || photo.length > 3_000_000) {
+      return res.status(400).json({ error: 'Upload a JPG, PNG, or WebP photo no larger than 2 MB' })
     }
 
     const sql = await getSql()
@@ -31,9 +35,9 @@ export default async function handler(req: any, res: any) {
 
     const inserted = await sql`
       INSERT INTO candidate_applications
-        (position_id, institutional_id, email, name, year_group, manifesto, bio)
+        (position_id, institutional_id, email, name, year_group, manifesto, bio, photo_url)
       VALUES
-        (${positionId}, ${institutionalId}, ${email}, ${name}, ${yearGroup || null}, ${manifesto}, ${bio})
+        (${positionId}, ${institutionalId}, ${email}, ${name}, ${yearGroup || null}, ${manifesto}, ${bio}, ${photo})
       RETURNING id, submitted_at AS "submittedAt"`
     return res.status(201).json({ application: inserted[0] })
   } catch (error: any) {

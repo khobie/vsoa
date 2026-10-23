@@ -24,7 +24,7 @@ export default async function handler(_req: any, res: any) {
       FROM positions ORDER BY sort_order`
 
     const candidates = await sql`
-      SELECT c.id, c.position_id AS "positionId", c.name, c.faculty, c.manifesto, c.bio
+      SELECT c.id, c.position_id AS "positionId", c.name, c.photo_url AS "photoUrl", c.faculty, c.manifesto, c.bio
       FROM candidates c
       WHERE c.status = 'APPROVED'`
 

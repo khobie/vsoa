@@ -7,6 +7,7 @@ interface ApiCandidate {
   id: string
   positionId: string
   name: string
+  photoUrl?: string | null
   faculty: string
   manifesto: string
   bio: string
@@ -76,6 +77,7 @@ function normalizeElection(raw: ApiElection): Election {
         positionId: candidate.positionId,
         name: candidate.name,
         initials: initials(candidate.name),
+        photoUrl: candidate.photoUrl,
         faculty: candidate.faculty,
         manifesto: candidate.manifesto,
         bio: candidate.bio,

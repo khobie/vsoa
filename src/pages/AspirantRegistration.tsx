@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'react-router'
-import { ArrowLeft, CheckCircle2, Loader2, UserPlus } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, ImagePlus, Loader2, UserPlus } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,6 +18,7 @@ const initialForm = {
   email: '',
   yearGroup: '',
   positionId: '',
+  photo: '',
   manifesto: '',
   bio: '',
 }
@@ -32,6 +33,26 @@ export default function AspirantRegistration() {
 
   function update(field: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  function selectPhoto(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setError('')
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Choose a JPG, PNG, or WebP image')
+      event.target.value = ''
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Your photo must be no larger than 2 MB')
+      event.target.value = ''
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => update('photo', String(reader.result))
+    reader.onerror = () => setError('Unable to read that photo. Please choose another file.')
+    reader.readAsDataURL(file)
   }
 
   async function submit(event: FormEvent) {
@@ -69,12 +90,8 @@ export default function AspirantRegistration() {
             <CardContent className="flex flex-col items-center py-12 text-center">
               <CheckCircle2 className="h-16 w-16 text-emerald-600" />
               <h1 className="mt-5 text-2xl font-bold">Registration received</h1>
-              <p className="mt-3 max-w-md text-muted-foreground">
-                Your aspirant application has been sent to the SRC Electoral Commission for eligibility review.
-              </p>
-              <p className="mt-5 rounded-lg bg-secondary px-4 py-2 font-mono text-sm">
-                Reference: {reference.slice(0, 8).toUpperCase()}
-              </p>
+              <p className="mt-3 max-w-md text-muted-foreground">Your aspirant application and photo have been sent to the SRC Electoral Commission for eligibility review.</p>
+              <p className="mt-5 rounded-lg bg-secondary px-4 py-2 font-mono text-sm">Reference: {reference.slice(0, 8).toUpperCase()}</p>
               <Button asChild className="mt-7"><Link to="/">Return to home</Link></Button>
             </CardContent>
           </Card>
@@ -112,15 +129,25 @@ export default function AspirantRegistration() {
                 <div className="space-y-2">
                   <Label>Position</Label>
                   <Select value={form.positionId} onValueChange={(value) => update('positionId', value)} required>
-                    <SelectTrigger className="w-full" aria-label="Position">
-                      <SelectValue placeholder="Select the position you are contesting" />
-                    </SelectTrigger>
+                    <SelectTrigger className="w-full" aria-label="Position"><SelectValue placeholder="Select the position you are contesting" /></SelectTrigger>
                     <SelectContent>
-                      {election?.positions.map((position) => (
-                        <SelectItem key={position.id} value={position.id}>{position.title}</SelectItem>
-                      ))}
+                      {election?.positions.map((position) => <SelectItem key={position.id} value={position.id}>{position.title}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="aspirant-photo">Your photo</Label>
+                  <div className="flex items-center gap-4 rounded-lg border border-dashed p-4">
+                    {form.photo ? (
+                      <img src={form.photo} alt="Aspirant preview" className="h-20 w-20 rounded-full border object-cover" />
+                    ) : (
+                      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary"><ImagePlus className="h-7 w-7 text-primary" /></div>
+                    )}
+                    <div className="flex-1">
+                      <Input id="aspirant-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={selectPhoto} required={!form.photo} />
+                      <p className="mt-2 text-xs text-muted-foreground">JPG, PNG, or WebP. Maximum 2 MB. Use a clear headshot.</p>
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="aspirant-manifesto">Manifesto</Label>
@@ -130,29 +157,16 @@ export default function AspirantRegistration() {
                   <Label htmlFor="aspirant-bio">Short biography</Label>
                   <Textarea id="aspirant-bio" className="min-h-24" placeholder="Your programme, experience, and relevant leadership background…" value={form.bio} onChange={(e) => update('bio', e.target.value)} minLength={10} maxLength={2000} required />
                 </div>
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertTitle>Registration not submitted</AlertTitle>
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-                <Button type="submit" className="w-full" disabled={busy || !election}>
-                  {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {busy ? 'Submitting…' : 'Submit aspirant registration'}
+                {error && <Alert variant="destructive"><AlertTitle>Registration not submitted</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
+                <Button type="submit" className="w-full" disabled={busy || !election || !form.photo}>
+                  {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busy ? 'Submitting…' : 'Submit aspirant registration'}
                 </Button>
-                <p className="text-center text-xs text-muted-foreground">
-                  Submission does not guarantee approval. The Electoral Commission will verify your eligibility.
-                </p>
+                <p className="text-center text-xs text-muted-foreground">Submission does not guarantee approval. The Electoral Commission will verify your eligibility.</p>
               </form>
             </CardContent>
           </Card>
         )}
-
-        <div className="mt-5 text-center">
-          <Link to="/" className="inline-flex items-center gap-1 text-sm text-blue-300 hover:text-white">
-            <ArrowLeft className="h-4 w-4" /> Back to home
-          </Link>
-        </div>
+        <div className="mt-5 text-center"><Link to="/" className="inline-flex items-center gap-1 text-sm text-blue-300 hover:text-white"><ArrowLeft className="h-4 w-4" /> Back to home</Link></div>
       </div>
     </div>
   )

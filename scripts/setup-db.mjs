@@ -101,10 +101,12 @@ async function seed() {
     ['Efua Adjei', 'Faculty of Arts', 'Minutes within 48 hours; searchable archive of SRC resolutions.', 'Level 300 Communication Studies student.'],
     ['Daniel Osei', 'Faculty of Science', 'Automated event reminders and digitised SRC records.', 'Level 300 Computer Science student.'],
   ])
-  await addPosition(src, "Women's Commissioner", 'Advocates for female students. Select ONE candidate.', 3, [
-    ['Gifty Ankrah', 'Faculty of Business', 'Sanitary banks in every hall; mentorship bridge to alumnae.', 'Level 300 Marketing student.'],
-    ['Mawuli Agbeko', 'Faculty of Arts', 'Campus lighting safety audits; equal access to SRC bursaries.', 'Level 400 Sociology student.'],
+  await addPosition(src, 'Financial Secretary', 'Manages SRC finances and financial reporting. Select ONE candidate.', 3, [
+    ['Gifty Ankrah', 'School of Anaesthesia Ridge', 'Transparent budgets and timely financial reports.', 'Anaesthesia student with financial leadership experience.'],
+    ['Mawuli Agbeko', 'School of Anaesthesia Ridge', 'Responsible spending and accessible student dues records.', 'Anaesthesia student committed to accountability.'],
   ])
+  await addPosition(src, 'SRC Organizer', 'Coordinates SRC programmes and student activities. Select ONE candidate.', 4, [])
+  await addPosition(src, 'Public Relations Officer', 'Leads SRC communication and public engagement. Select ONE candidate.', 5, [])
   await addPosition(pgsa, 'PGSA President', 'Select ONE candidate.', 0, [
     ['Dr. Esi Quarshie', 'School of Graduate Studies', 'Research grants clinic and postgraduate housing taskforce.', 'PhD candidate, Development Studies.'],
     ['Tetteh Narh', 'School of Graduate Studies', 'Conference travel fund reform and supervisor-feedback charter.', 'MPhil candidate, Agricultural Economics.'],

@@ -18,6 +18,7 @@ interface Application {
   yearGroup: string | null
   manifesto: string
   bio: string
+  photoUrl: string | null
   status: CandidateStatus
   positionId: string
   positionTitle: string
@@ -141,8 +142,17 @@ export default function AdminCandidates() {
           {viewing && (
             <>
               <DialogHeader>
-                <DialogTitle>{viewing.name}</DialogTitle>
-                <DialogDescription>{viewing.positionTitle} · {viewing.electionName}</DialogDescription>
+                <div className="flex items-center gap-3">
+                  {viewing.photoUrl ? (
+                    <img src={viewing.photoUrl} alt={viewing.name} className="h-16 w-16 rounded-full border object-cover" />
+                  ) : (
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary font-bold">{initials(viewing.name)}</div>
+                  )}
+                  <div>
+                    <DialogTitle>{viewing.name}</DialogTitle>
+                    <DialogDescription>{viewing.positionTitle} · {viewing.electionName}</DialogDescription>
+                  </div>
+                </div>
               </DialogHeader>
               <div className="space-y-4 text-sm">
                 <div className="grid grid-cols-2 gap-3 rounded-lg bg-secondary p-3 text-xs">

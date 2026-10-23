@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   AlertDialog,
@@ -315,6 +315,7 @@ export default function BallotPage() {
                 )}
               >
                 <Avatar className="h-14 w-14 shrink-0">
+                  {c.photoUrl && <AvatarImage src={c.photoUrl} alt={c.name} className="object-cover" />}
                   <AvatarFallback className={cn('text-base font-bold', selected ? 'bg-primary text-primary-foreground' : 'bg-slate-200 text-slate-600')}>
                     {c.initials}
                   </AvatarFallback>
@@ -391,6 +392,7 @@ export default function BallotPage() {
               <DialogHeader>
                 <div className="flex items-center gap-3">
                   <Avatar className="h-12 w-12">
+                    {manifestoCandidate.photoUrl && <AvatarImage src={manifestoCandidate.photoUrl} alt={manifestoCandidate.name} className="object-cover" />}
                     <AvatarFallback className="bg-primary text-primary-foreground font-bold">
                       {manifestoCandidate.initials}
                     </AvatarFallback>

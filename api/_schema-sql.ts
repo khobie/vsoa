@@ -109,6 +109,7 @@ export const DDL_STATEMENTS: string[] = [
      year_group text,
      manifesto text NOT NULL,
      bio text NOT NULL,
+     photo_url text,
      status candidate_status NOT NULL DEFAULT 'SUBMITTED',
      submitted_at timestamptz NOT NULL DEFAULT now(),
      reviewed_at timestamptz,
@@ -116,6 +117,7 @@ export const DDL_STATEMENTS: string[] = [
      UNIQUE (position_id, institutional_id)
    )`,
 
+  `ALTER TABLE candidate_applications ADD COLUMN IF NOT EXISTS photo_url text`,
   `ALTER TABLE candidates ADD COLUMN IF NOT EXISTS application_id uuid REFERENCES candidate_applications(id)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_candidates_application ON candidates(application_id) WHERE application_id IS NOT NULL`,
   `CREATE INDEX IF NOT EXISTS idx_candidate_applications_status ON candidate_applications(status)`,

@@ -56,6 +56,7 @@ export interface Candidate {
   positionId: string
   name: string
   initials: string
+  photoUrl?: string | null
   faculty: string
   manifesto: string
   bio: string
