@@ -1,5 +1,5 @@
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
-import { getSql } from '../_db'
+import { getSql } from '../_db.js'
 
 export const SESSION_COOKIE = 'evote_session'
 export const SESSION_SECONDS = 60 * 60 * 24 * 7

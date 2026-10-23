@@ -1,4 +1,4 @@
-import { getSql } from '../_db'
+import { getSql } from '../_db.js'
 import {
   SESSION_SECONDS,
   createSessionToken,
@@ -7,7 +7,7 @@ import {
   methodNotAllowed,
   sessionCookie,
   verifyPassword,
-} from './_utils'
+} from './_utils.js'
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return methodNotAllowed(res, 'POST')

@@ -1,6 +1,6 @@
 export default async function handler(req: any, res: any) {
   try {
-    const { getSessionUser, methodNotAllowed } = await import('./_utils')
+    const { getSessionUser, methodNotAllowed } = await import('./_utils.js')
     if (req.method !== 'GET') return methodNotAllowed(res, 'GET')
     const user = await getSessionUser(req)
     res.setHeader('Cache-Control', 'no-store')
