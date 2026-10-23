@@ -137,11 +137,11 @@ export interface VoterRecord {
 /* -------------------------------------------------------------------------- */
 
 export const institution: Institution = {
-  name: 'University of Ghana, Legon',
-  shortName: 'UG',
-  motto: 'Integri Procedamus',
-  email: 'elections@ug.edu.gh',
-  phone: '+233 30 221 3811',
+  name: 'School of Anaesthesia Ridge',
+  shortName: 'SAR',
+  motto: 'Students’ Representative Council Elections',
+  email: 'src@sar.test',
+  phone: '+233 00 000 0000',
 }
 
 /* -------------------------------------------------------------------------- */
@@ -152,9 +152,9 @@ export const demoVoter: User = {
   id: 'u-001',
   name: 'Ama Serwaa',
   institutionalId: '10987654',
-  email: 'aserwaa@st.ug.edu.gh',
-  faculty: 'Faculty of Science',
-  department: 'Computer Science',
+  email: 'aserwaa@student.sar.test',
+  faculty: 'School of Anaesthesia Ridge',
+  department: 'Anaesthesia',
   role: 'voter',
   yearGroup: 'Level 300',
 }
@@ -163,7 +163,7 @@ export const demoAdmin: User = {
   id: 'u-900',
   name: 'Dr. Kofi Asante',
   institutionalId: 'STAFF-0142',
-  email: 'kasante@ug.edu.gh',
+  email: 'kasante@sar.test',
   faculty: 'Office of the Electoral Commission',
   department: 'Electoral Commission',
   role: 'commissioner',
@@ -683,14 +683,14 @@ export const securityAlerts: SecurityAlert[] = [
 /* -------------------------------------------------------------------------- */
 
 export const voterRegister: VoterRecord[] = [
-  { id: 'vr-001', institutionalId: '10987654', name: 'Ama Serwaa', email: 'aserwaa@st.ug.edu.gh', faculty: 'Faculty of Science', department: 'Computer Science', eligibleElections: 2, status: 'active' },
-  { id: 'vr-002', institutionalId: '10881233', name: 'Kojo Antwi', email: 'kantwi@st.ug.edu.gh', faculty: 'Faculty of Business', department: 'Accounting', eligibleElections: 1, status: 'active' },
-  { id: 'vr-003', institutionalId: '10765490', name: 'Afi Dzifa', email: 'adzifa@st.ug.edu.gh', faculty: 'Faculty of Law', department: 'Law', eligibleElections: 1, status: 'active' },
-  { id: 'vr-004', institutionalId: '10912387', name: 'Sena Agbozo', email: 'sagbozo@st.ug.edu.gh', faculty: 'School of Medicine', department: 'Medicine', eligibleElections: 1, status: 'active' },
-  { id: 'vr-005', institutionalId: '10667712', name: 'Emeka Obi', email: 'eobi@st.ug.edu.gh', faculty: 'Faculty of Engineering', department: 'Computer Engineering', eligibleElections: 2, status: 'active' },
-  { id: 'vr-006', institutionalId: '10998821', name: 'Adjoa Poku', email: 'apoku@st.ug.edu.gh', faculty: 'Faculty of Arts', department: 'Political Science', eligibleElections: 1, status: 'pending_verification' },
-  { id: 'vr-007', institutionalId: '10554401', name: 'Yaw Owusu-Ansah', email: 'yowusu@st.ug.edu.gh', faculty: 'Faculty of Science', department: 'Physics', eligibleElections: 2, status: 'active' },
-  { id: 'vr-008', institutionalId: '10332218', name: 'Delali Normeshie', email: 'dnormeshie@st.ug.edu.gh', faculty: 'School of Graduate Studies', department: 'Development Studies', eligibleElections: 2, status: 'active' },
+  { id: 'vr-001', institutionalId: '10987654', name: 'Ama Serwaa', email: 'aserwaa@student.sar.test', faculty: 'School of Anaesthesia Ridge', department: 'Anaesthesia', eligibleElections: 1, status: 'active' },
+  { id: 'vr-002', institutionalId: '10881233', name: 'Kojo Antwi', email: 'kantwi@student.sar.test', faculty: 'School of Anaesthesia Ridge', department: 'Anaesthesia', eligibleElections: 1, status: 'active' },
+  { id: 'vr-003', institutionalId: '10765490', name: 'Afi Dzifa', email: 'adzifa@student.sar.test', faculty: 'School of Anaesthesia Ridge', department: 'Anaesthesia', eligibleElections: 1, status: 'active' },
+  { id: 'vr-004', institutionalId: '10912387', name: 'Sena Agbozo', email: 'sagbozo@student.sar.test', faculty: 'School of Anaesthesia Ridge', department: 'Anaesthesia', eligibleElections: 1, status: 'active' },
+  { id: 'vr-005', institutionalId: '10667712', name: 'Emeka Obi', email: 'eobi@student.sar.test', faculty: 'School of Anaesthesia Ridge', department: 'Anaesthesia', eligibleElections: 1, status: 'active' },
+  { id: 'vr-006', institutionalId: '10998821', name: 'Adjoa Poku', email: 'apoku@student.sar.test', faculty: 'School of Anaesthesia Ridge', department: 'Anaesthesia', eligibleElections: 1, status: 'pending_verification' },
+  { id: 'vr-007', institutionalId: '10554401', name: 'Yaw Owusu-Ansah', email: 'yowusu@student.sar.test', faculty: 'School of Anaesthesia Ridge', department: 'Anaesthesia', eligibleElections: 1, status: 'active' },
+  { id: 'vr-008', institutionalId: '10332218', name: 'Delali Normeshie', email: 'dnormeshie@student.sar.test', faculty: 'School of Anaesthesia Ridge', department: 'Anaesthesia', eligibleElections: 1, status: 'active' },
 ]
 
 /* -------------------------------------------------------------------------- */

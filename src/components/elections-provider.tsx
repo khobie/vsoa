@@ -118,9 +118,10 @@ export function ElectionsProvider({ children }: { children: ReactNode }) {
       if (!response.ok) throw new Error(`Election service returned ${response.status}`)
       const data = await response.json() as { elections?: ApiElection[]; error?: string }
       if (!Array.isArray(data.elections)) throw new Error(data.error || 'Election service returned an invalid response')
-      const normalized = data.elections.map(normalizeElection)
+      const srcElections = data.elections.filter((raw) => (raw.slug || raw.id) === 'el-src-2026')
+      const normalized = srcElections.map(normalizeElection)
       setElections(normalized)
-      setTallies(Object.fromEntries(data.elections.map((raw, index) => [
+      setTallies(Object.fromEntries(srcElections.map((raw, index) => [
         normalized[index].id,
         normalizeTallies(normalized[index], raw.publishedResults),
       ])))

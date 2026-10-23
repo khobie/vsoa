@@ -52,9 +52,9 @@ async function seed() {
   }
 
   await sql`INSERT INTO users (institutional_id, email, password_hash, name, faculty, department, year_group)
-    VALUES ('10987654','aserwaa@st.ug.edu.gh',${hashPassword('VoteDemo2026!')},'Ama Serwaa','Faculty of Science','Computer Science','Level 300')`
+    VALUES ('10987654','aserwaa@student.sar.test',${hashPassword('VoteDemo2026!')},'Ama Serwaa','School of Anaesthesia Ridge','Anaesthesia','Level 300')`
   await sql`INSERT INTO users (institutional_id, email, password_hash, name, faculty, department, year_group)
-    VALUES ('STAFF-0142','kasante@ug.edu.gh',${hashPassword('AdminDemo2026!')},'Dr. Kofi Asante','Office of the Electoral Commission','Electoral Commission','—')`
+    VALUES ('STAFF-0142','kasante@sar.test',${hashPassword('AdminDemo2026!')},'Dr. Kofi Asante','Office of the Electoral Commission','Electoral Commission','—')`
   const [voter] = await sql`SELECT id FROM users WHERE institutional_id='10987654'`
   const [comm] = await sql`SELECT id FROM users WHERE institutional_id='STAFF-0142'`
   await sql`INSERT INTO user_roles (user_id, role) VALUES (${voter.id}, 'VOTER')`

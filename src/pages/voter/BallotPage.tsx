@@ -98,7 +98,7 @@ export default function BallotPage() {
     // DEMO ONLY — the real system submits once to a transactional API that
     // atomically records participation + anonymous ballot. Retries are idempotent.
     setTimeout(() => {
-      setReceiptCode(`UG-${Date.now().toString(36).toUpperCase()}-${electionRef.slice(3, 7).toUpperCase()}`)
+      setReceiptCode(`SAR-${Date.now().toString(36).toUpperCase()}-${electionRef.slice(3, 7).toUpperCase()}`)
       setStep('done')
       window.scrollTo({ top: 0 })
     }, 1800)

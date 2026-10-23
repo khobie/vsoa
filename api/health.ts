@@ -21,7 +21,7 @@ export default async function handler(_req: any, res: any) {
   }
   res.status(200).json({
     ok: true,
-    service: 'ug-evoting-api',
+    service: 'sar-evoting-api',
     time: new Date().toISOString(),
     database,
     detail,

@@ -57,10 +57,10 @@ export default function Landing() {
             {institution.name}
           </p>
           <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight md:text-5xl">
-            Secure, transparent university elections
+            Secure, transparent SRC elections
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg text-blue-100">
-            Cast your ballot online for SRC, faculty, departmental and postgraduate elections —
+            Cast your ballot in the School of Anaesthesia Ridge SRC Election —
             with the secrecy of a paper ballot and the auditability of a public count.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -163,9 +163,7 @@ export default function Landing() {
           <p>
             {institution.name} · Office of the Electoral Commission
           </p>
-          <p>
-            {institution.email} · {institution.phone}
-          </p>
+          <p>Students’ Representative Council · 2026</p>
           <Link to="/login" className="text-amber-400 hover:underline">
             Electoral staff sign-in
           </Link>
