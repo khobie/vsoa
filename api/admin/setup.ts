@@ -23,7 +23,7 @@ export default async function handler(req: any, res: any) {
     return res.status(403).json({ error: 'Forbidden' })
   }
 
-  const sql = getSql()
+  const sql = await getSql()
   const step = String(req.query.step ?? '')
 
   if (step === 'migrate') {

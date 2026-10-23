@@ -8,7 +8,7 @@ import { getSql } from '../_db'
  */
 export default async function handler(_req: any, res: any) {
   try {
-    const sql = getSql()
+    const sql = await getSql()
 
     const elections = await sql`
       SELECT id, slug, name, organization, description, status, timezone,
