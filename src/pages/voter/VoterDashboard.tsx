@@ -3,12 +3,15 @@ import { Vote, CalendarClock, CheckCircle2, Archive, ChevronRight } from 'lucide
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ElectionStatusBadge } from '@/components/StatusBadge'
-import { demoVoter, formatDateTime, turnoutPercent } from '@/lib/mock-data'
+import { formatDateTime, turnoutPercent } from '@/lib/mock-data'
 import { useElections } from '@/components/elections-provider'
+import { useAuth } from '@/components/auth-provider'
 
 export default function VoterDashboard() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { elections } = useElections()
+  if (!user) return null
   const open = elections.filter((election) => election.status === 'open')
   const upcoming = elections.filter((election) => election.status === 'scheduled')
   const past = elections.filter((e) => e.status === 'closed' || e.status === 'published')
@@ -17,9 +20,9 @@ export default function VoterDashboard() {
     <div className="mx-auto max-w-4xl space-y-8">
       {/* Welcome */}
       <div>
-        <h1 className="text-2xl font-bold">Akwaaba, {demoVoter.name.split(' ')[0]} 👋</h1>
+        <h1 className="text-2xl font-bold">Akwaaba, {user.name.split(' ')[0]} 👋</h1>
         <p className="mt-1 text-muted-foreground">
-          {demoVoter.department}, {demoVoter.faculty} · {demoVoter.yearGroup}
+          {user.department}, {user.faculty} · {user.yearGroup}
         </p>
       </div>
 

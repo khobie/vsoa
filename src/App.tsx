@@ -16,6 +16,7 @@ import AdminVoters from './pages/admin/AdminVoters'
 import AdminResults from './pages/admin/AdminResults'
 import AdminAudit from './pages/admin/AdminAudit'
 import AdminSettings from './pages/admin/AdminSettings'
+import RequireRole from './components/require-role'
 
 export default function App() {
   return (
@@ -24,25 +25,29 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
 
-      {/* Voter area */}
+      {/* Shared voter shell; published results remain public. */}
       <Route element={<VoterLayout />}>
-        <Route path="/dashboard" element={<VoterDashboard />} />
-        <Route path="/vote/:electionId" element={<BallotPage />} />
         <Route path="/results" element={<ResultsIndex />} />
         <Route path="/results/:electionId" element={<ResultsPage />} />
+        <Route element={<RequireRole roles={['voter']} />}>
+          <Route path="/dashboard" element={<VoterDashboard />} />
+          <Route path="/vote/:electionId" element={<BallotPage />} />
+        </Route>
       </Route>
 
       {/* Electoral commission area */}
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<AdminDashboard />} />
-        <Route path="elections" element={<AdminElections />} />
-        <Route path="elections/new" element={<AdminElectionNew />} />
-        <Route path="elections/:electionId" element={<AdminElectionDetail />} />
-        <Route path="candidates" element={<AdminCandidates />} />
-        <Route path="voters" element={<AdminVoters />} />
-        <Route path="results" element={<AdminResults />} />
-        <Route path="audit" element={<AdminAudit />} />
-        <Route path="settings" element={<AdminSettings />} />
+      <Route element={<RequireRole roles={['super_admin', 'commissioner', 'officer']} />}>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="elections" element={<AdminElections />} />
+          <Route path="elections/new" element={<AdminElectionNew />} />
+          <Route path="elections/:electionId" element={<AdminElectionDetail />} />
+          <Route path="candidates" element={<AdminCandidates />} />
+          <Route path="voters" element={<AdminVoters />} />
+          <Route path="results" element={<AdminResults />} />
+          <Route path="audit" element={<AdminAudit />} />
+          <Route path="settings" element={<AdminSettings />} />
+        </Route>
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

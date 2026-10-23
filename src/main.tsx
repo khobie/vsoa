@@ -4,13 +4,16 @@ import { BrowserRouter } from 'react-router'
 import './index.css'
 import App from './App.tsx'
 import { ElectionsProvider } from './components/elections-provider'
+import { AuthProvider } from './components/auth-provider'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <ElectionsProvider>
-        <App />
-      </ElectionsProvider>
+      <AuthProvider>
+        <ElectionsProvider>
+          <App />
+        </ElectionsProvider>
+      </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
 )

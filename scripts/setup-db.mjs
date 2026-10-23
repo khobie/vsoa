@@ -10,6 +10,12 @@ import { neon } from '@neondatabase/serverless'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { randomBytes, scryptSync } from 'node:crypto'
+
+function hashPassword(password) {
+  const salt = randomBytes(16).toString('hex')
+  return `scrypt$${salt}$${scryptSync(password, salt, 64).toString('hex')}`
+}
 
 const here = dirname(fileURLToPath(import.meta.url))
 const sqlFile = readFileSync(join(here, '../api/_schema-sql.ts'), 'utf8')
@@ -46,9 +52,9 @@ async function seed() {
   }
 
   await sql`INSERT INTO users (institutional_id, email, password_hash, name, faculty, department, year_group)
-    VALUES ('10987654','aserwaa@st.ug.edu.gh','PENDING_AUTH_PHASE','Ama Serwaa','Faculty of Science','Computer Science','Level 300')`
+    VALUES ('10987654','aserwaa@st.ug.edu.gh',${hashPassword('VoteDemo2026!')},'Ama Serwaa','Faculty of Science','Computer Science','Level 300')`
   await sql`INSERT INTO users (institutional_id, email, password_hash, name, faculty, department, year_group)
-    VALUES ('STAFF-0142','kasante@ug.edu.gh','PENDING_AUTH_PHASE','Dr. Kofi Asante','Office of the Electoral Commission','Electoral Commission','—')`
+    VALUES ('STAFF-0142','kasante@ug.edu.gh',${hashPassword('AdminDemo2026!')},'Dr. Kofi Asante','Office of the Electoral Commission','Electoral Commission','—')`
   const [voter] = await sql`SELECT id FROM users WHERE institutional_id='10987654'`
   const [comm] = await sql`SELECT id FROM users WHERE institutional_id='STAFF-0142'`
   await sql`INSERT INTO user_roles (user_id, role) VALUES (${voter.id}, 'VOTER')`

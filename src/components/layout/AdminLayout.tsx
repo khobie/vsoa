@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { InstitutionMark } from '@/components/InstitutionMark'
-import { demoAdmin } from '@/lib/mock-data'
+import { useAuth } from '@/components/auth-provider'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -56,7 +56,9 @@ function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
 
 export default function AdminLayout() {
   const navigate = useNavigate()
+  const { user, signOut } = useAuth()
   const [open, setOpen] = useState(false)
+  if (!user) return null
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -76,19 +78,19 @@ export default function AdminLayout() {
           <div className="mb-3 flex items-center gap-3 px-1">
             <Avatar className="h-9 w-9">
               <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-xs font-semibold">
-                KA
+                {user.name.split(' ').map((part) => part[0]).join('').slice(0, 2)}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 leading-tight">
-              <p className="truncate text-sm font-medium text-white">{demoAdmin.name}</p>
-              <p className="truncate text-xs text-blue-200">Electoral Commissioner</p>
+              <p className="truncate text-sm font-medium text-white">{user.name}</p>
+              <p className="truncate text-xs text-blue-200">{user.role.replace('_', ' ')}</p>
             </div>
           </div>
           <Button
             variant="ghost"
             size="sm"
             className="w-full justify-start gap-2 text-blue-200 hover:bg-sidebar-accent hover:text-white"
-            onClick={() => navigate('/login')}
+            onClick={() => void signOut().then(() => navigate('/login'))}
           >
             <LogOut className="h-4 w-4" /> Sign out
           </Button>
