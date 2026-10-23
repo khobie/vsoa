@@ -1,5 +1,3 @@
-import { getSql } from '../_db'
-
 /**
  * GET /api/elections
  * Public-safe election list: approved candidates only, no voter data,
@@ -8,7 +6,11 @@ import { getSql } from '../_db'
  */
 export default async function handler(_req: any, res: any) {
   try {
-    const sql = await getSql()
+    const url = process.env.DATABASE_URL
+    if (!url) return res.status(503).json({ error: 'Database not configured' })
+
+    const { neon } = await import('@neondatabase/serverless')
+    const sql = neon(url)
 
     const elections = await sql`
       SELECT id, slug, name, organization, description, status, timezone,
@@ -57,7 +59,6 @@ export default async function handler(_req: any, res: any) {
 
     res.status(200).json({ elections: payload })
   } catch (e: any) {
-    if (e.code === 'NO_DB') return res.status(503).json({ error: 'Database not configured' })
-    res.status(500).json({ error: 'Internal error' })
+    res.status(500).json({ error: 'Internal error', detail: String(e?.message ?? e).slice(0, 300) })
   }
 }
