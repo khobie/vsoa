@@ -66,9 +66,15 @@ export default function VoterDashboard() {
                       <p className="font-semibold">{turnoutPercent(e)}%</p>
                     </div>
                   </div>
-                  <Button className="mt-5 w-full sm:w-auto" size="lg" onClick={() => navigate(`/vote/${e.id}`)}>
-                    Cast your ballot <ChevronRight className="ml-1 h-4 w-4" />
-                  </Button>
+                  {user.votedElectionIds?.includes(e.id) ? (
+                    <div className="mt-5 flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                      <CheckCircle2 className="h-5 w-5" /> Your ballot has been accepted. You cannot vote again.
+                    </div>
+                  ) : (
+                    <Button className="mt-5 w-full sm:w-auto" size="lg" onClick={() => navigate(`/vote/${e.id}`)}>
+                      Cast your ballot <ChevronRight className="ml-1 h-4 w-4" />
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             ))}

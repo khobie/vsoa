@@ -30,6 +30,7 @@ import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { type Candidate } from '@/lib/mock-data'
 import { useElections } from '@/components/elections-provider'
+import { useAuth } from '@/components/auth-provider'
 import { cn } from '@/lib/utils'
 
 type Step = 'instructions' | 'voting' | 'review' | 'submitting' | 'done'
@@ -39,7 +40,8 @@ const ABSTAIN = '__abstain__'
 export default function BallotPage() {
   const { electionId } = useParams()
   const navigate = useNavigate()
-  const { getElection } = useElections()
+  const { getElection, refresh: refreshElections } = useElections()
+  const { refreshUser } = useAuth()
   const election = getElection(electionId ?? '')
 
   const [step, setStep] = useState<Step>('instructions')
@@ -48,6 +50,8 @@ export default function BallotPage() {
   const [manifestoCandidate, setManifestoCandidate] = useState<Candidate | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [receiptCode, setReceiptCode] = useState('')
+  const [acceptedAt, setAcceptedAt] = useState('')
+  const [submitError, setSubmitError] = useState('')
 
   const positions = useMemo(() => election?.positions ?? [], [election])
   const position = positions[positionIndex]
@@ -92,16 +96,34 @@ export default function BallotPage() {
 
   const electionRef = election.id
 
-  function submitBallot() {
+  async function submitBallot() {
     setConfirmOpen(false)
+    setSubmitError('')
     setStep('submitting')
-    // DEMO ONLY — the real system submits once to a transactional API that
-    // atomically records participation + anonymous ballot. Retries are idempotent.
-    setTimeout(() => {
-      setReceiptCode(`SAR-${Date.now().toString(36).toUpperCase()}-${electionRef.slice(3, 7).toUpperCase()}`)
+    try {
+      const response = await fetch('/api/ballots/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          electionId: electionRef,
+          selections: positions.map((item) => ({
+            positionId: item.id,
+            candidateId: selections[item.id] === ABSTAIN ? null : selections[item.id],
+          })),
+        }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'The ballot could not be submitted')
+      setReceiptCode(data.receiptCode)
+      setAcceptedAt(data.acceptedAt)
       setStep('done')
       window.scrollTo({ top: 0 })
-    }, 1800)
+      void Promise.all([refreshUser(), refreshElections()]).catch(() => undefined)
+    } catch (cause) {
+      setSubmitError(cause instanceof Error ? cause.message : 'The ballot could not be submitted')
+      setStep('review')
+      window.scrollTo({ top: 0 })
+    }
   }
 
   /* ------------------------------ DONE ------------------------------ */
@@ -122,7 +144,7 @@ export default function BallotPage() {
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Confirmation receipt</p>
               <p className="mt-1 font-mono text-lg font-semibold">{receiptCode}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })} (GMT)
+                {new Date(acceptedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Accra' })} (GMT)
               </p>
             </div>
             <Alert className="border-blue-200 bg-blue-50 text-left">
@@ -214,6 +236,12 @@ export default function BallotPage() {
         <p className="mt-1 text-muted-foreground">
           Check each selection carefully. After acceptance, the ballot is final.
         </p>
+        {submitError && (
+          <Alert variant="destructive" className="mt-5">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{submitError}</AlertDescription>
+          </Alert>
+        )}
         <Card className="mt-6">
           <CardContent className="divide-y py-2">
             {positions.map((p) => {

@@ -29,6 +29,7 @@ export default function AdminDashboard() {
   const { elections } = useElections()
   const open = elections.filter((election) => election.status === 'open')
   const openElection = open[0]
+  const srcElection = elections.find((election) => election.id === 'el-src-2026')
 
   const pendingCandidates = elections
     .flatMap((e) => e.positions.flatMap((p) => p.candidates))
@@ -37,7 +38,7 @@ export default function AdminDashboard() {
   const awaitingVerification = elections.filter((e) => e.verificationStatus === 'awaiting_verification')
 
   const stats = [
-    { label: 'Registered voters', value: '12,480', icon: Users, tone: 'text-primary', href: '/admin/voters' },
+    { label: 'Registered voters', value: (srcElection?.eligibleVoters ?? 0).toLocaleString(), icon: Users, tone: 'text-primary', href: '/admin/voters' },
     { label: 'Active elections', value: String(open.length), icon: Vote, tone: 'text-emerald-600', href: '/admin/elections' },
     { label: 'Candidates to review', value: String(pendingCandidates), icon: UserCheck, tone: 'text-amber-600', href: '/admin/candidates' },
     { label: 'Results awaiting verification', value: String(awaitingVerification.length), icon: ClipboardCheck, tone: 'text-violet-600', href: '/admin/results' },

@@ -21,11 +21,15 @@ export default async function handler(req: any, res: any) {
     const sql = await getSql()
     const users = await sql`
       SELECT id, password_hash, is_active
-      FROM users
-      WHERE institutional_id = ${institutionalId}`
+      FROM users u
+      WHERE institutional_id = ${institutionalId}
+        AND EXISTS (
+          SELECT 1 FROM user_roles ur
+          WHERE ur.user_id = u.id AND ur.role IN ('SUPER_ADMIN', 'COMMISSIONER', 'OFFICER')
+        )`
     const user = users[0]
     if (!user || !user.is_active || !verifyPassword(password, user.password_hash)) {
-      return res.status(401).json({ error: 'Invalid institutional ID or password' })
+      return res.status(401).json({ error: 'Invalid administrator ID or password' })
     }
 
     const token = createSessionToken()

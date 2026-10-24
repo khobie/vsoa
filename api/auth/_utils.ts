@@ -14,6 +14,7 @@ export interface AuthUser {
   yearGroup: string
   role: 'super_admin' | 'commissioner' | 'officer' | 'candidate' | 'voter'
   roles: AuthUser['role'][]
+  votedElectionIds: string[]
 }
 
 export function hashPassword(password: string) {
@@ -47,8 +48,8 @@ export function readSessionToken(req: any) {
   return null
 }
 
-export function sessionCookie(token: string) {
-  return `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_SECONDS}`
+export function sessionCookie(token: string, maxAge = SESSION_SECONDS) {
+  return `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`
 }
 
 export function clearSessionCookie() {
@@ -62,7 +63,10 @@ export async function getSessionUser(req: any): Promise<AuthUser | null> {
   const rows = await sql`
     SELECT u.id, u.institutional_id AS "institutionalId", u.email, u.name,
            u.faculty, u.department, u.year_group AS "yearGroup",
-           json_agg(r.role) AS roles
+           json_agg(r.role) AS roles,
+           COALESCE((SELECT array_agg(e.slug)
+             FROM participation_records pr JOIN elections e ON e.id = pr.election_id
+             WHERE pr.voter_id = u.id), ARRAY[]::text[]) AS "votedElectionIds"
     FROM auth_sessions s
     JOIN users u ON u.id = s.user_id
     JOIN user_roles r ON r.user_id = u.id
@@ -84,6 +88,7 @@ export async function getSessionUser(req: any): Promise<AuthUser | null> {
     yearGroup: row.yearGroup ?? '',
     roles,
     role: rolePriority.find((role) => roles.includes(role)) ?? 'voter',
+    votedElectionIds: row.votedElectionIds ?? [],
   }
 }
 

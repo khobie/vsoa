@@ -3,12 +3,15 @@ import type { Role, User } from '@/lib/mock-data'
 
 export interface SessionUser extends User {
   roles: Role[]
+  votedElectionIds: string[]
 }
 
 interface AuthContextValue {
   user: SessionUser | null
   loading: boolean
   signIn: (institutionalId: string, password: string) => Promise<SessionUser>
+  signInVoter: (institutionalId: string, votingToken: string) => Promise<SessionUser>
+  refreshUser: () => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -53,6 +56,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data.user as SessionUser
   }, [])
 
+  const signInVoter = useCallback(async (institutionalId: string, votingToken: string) => {
+    const response = await fetch('/api/auth/voter-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ institutionalId, votingToken }),
+    })
+    const data = await parseResponse(response)
+    setUser(data.user)
+    return data.user as SessionUser
+  }, [])
+
+  const refreshUser = useCallback(async () => {
+    const response = await fetch('/api/auth/me', { headers: { Accept: 'application/json' } })
+    if (response.status === 401) {
+      setUser(null)
+      return
+    }
+    const data = await parseResponse(response)
+    setUser(data.user)
+  }, [])
+
   const signOut = useCallback(async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' })
@@ -61,7 +85,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const value = useMemo(() => ({ user, loading, signIn, signOut }), [user, loading, signIn, signOut])
+  const value = useMemo(
+    () => ({ user, loading, signIn, signInVoter, refreshUser, signOut }),
+    [user, loading, signIn, signInVoter, refreshUser, signOut],
+  )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 

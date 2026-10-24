@@ -47,6 +47,36 @@ export const DDL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_auth_sessions_expiry ON auth_sessions(expires_at)`,
 
+  // Only SHA-256 token hashes are stored. Raw tokens exist only in the email.
+  `CREATE TABLE IF NOT EXISTS voting_tokens (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     token_hash text NOT NULL UNIQUE,
+     expires_at timestamptz NOT NULL,
+     created_at timestamptz NOT NULL DEFAULT now(),
+     consumed_at timestamptz,
+     invalidated_at timestamptz,
+     invalidated_reason text,
+     delivery_status text NOT NULL DEFAULT 'pending' CHECK (delivery_status IN ('pending','sent','failed')),
+     delivery_detail text,
+     email_message_id text,
+     last_sent_at timestamptz
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_voting_tokens_active_user ON voting_tokens(user_id)
+     WHERE consumed_at IS NULL AND invalidated_at IS NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_voting_tokens_created ON voting_tokens(user_id, created_at DESC)`,
+
+  // Rate-limit evidence contains no raw voting token or IP address.
+  `CREATE TABLE IF NOT EXISTS voter_login_attempts (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     institutional_id text NOT NULL,
+     ip_hash text NOT NULL,
+     succeeded boolean NOT NULL DEFAULT false,
+     created_at timestamptz NOT NULL DEFAULT now()
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_voter_login_attempts_recent ON voter_login_attempts(created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_voter_login_attempts_student ON voter_login_attempts(institutional_id, created_at DESC)`,
+
   `CREATE TABLE IF NOT EXISTS elections (
      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
      slug text NOT NULL UNIQUE,

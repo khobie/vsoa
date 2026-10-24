@@ -49,6 +49,7 @@ model User {
   participation  ParticipationRecord[]
   candidacies    Candidate[]
   auditActions   AuditEvent[]
+  votingTokens   VotingToken[]
 }
 
 model UserRole {
@@ -59,6 +60,35 @@ model UserRole {
   createdAt DateTime @default(now())
 
   @@unique([userId, role])
+}
+
+model VotingToken {
+  id                String    @id @default(uuid())
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  tokenHash         String    @unique
+  expiresAt         DateTime
+  createdAt         DateTime  @default(now())
+  consumedAt        DateTime?
+  invalidatedAt     DateTime?
+  invalidatedReason String?
+  deliveryStatus    String    @default("pending")
+  deliveryDetail    String?
+  emailMessageId    String?
+  lastSentAt        DateTime?
+
+  @@index([userId, createdAt])
+}
+
+model VoterLoginAttempt {
+  id              String   @id @default(uuid())
+  institutionalId String
+  ipHash          String
+  succeeded       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([institutionalId, createdAt])
 }
 
 // ---------------------------------------------------------------------------
