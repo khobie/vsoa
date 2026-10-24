@@ -1,18 +1,14 @@
-import { GraduationCap } from 'lucide-react'
 import { institution } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 
 export function InstitutionMark({ dark = false }: { dark?: boolean }) {
   return (
     <div className="flex items-center gap-2.5">
-      <div
-        className={cn(
-          'flex h-9 w-9 items-center justify-center rounded-lg',
-          dark ? 'bg-amber-400 text-blue-950' : 'bg-primary text-primary-foreground'
-        )}
-      >
-        <GraduationCap className="h-5 w-5" />
-      </div>
+      <img
+        src="/school-logo.png"
+        alt="School of Anaesthesia and Critical Care logo"
+        className="h-11 w-11 shrink-0 rounded-full bg-white object-contain ring-1 ring-black/10"
+      />
       <div className="leading-tight">
         <p className={cn('text-sm font-semibold', dark ? 'text-white' : 'text-foreground')}>
           {institution.shortName} E-Voting
