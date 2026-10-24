@@ -67,6 +67,9 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json(counts[0])
     }
     if (action === 'cleanup') {
+      await sql`DELETE FROM ballot_selections WHERE ballot_id IN (
+        SELECT ab.id FROM anonymous_ballots ab
+        JOIN elections e ON e.id = ab.election_id WHERE e.slug = ${TEST_ELECTION})`
       await sql`DELETE FROM elections WHERE slug = ${TEST_ELECTION}`
       await sql`DELETE FROM users WHERE institutional_id = ${TEST_ID}`
       return res.status(200).json({ cleaned: true })
