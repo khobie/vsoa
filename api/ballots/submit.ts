@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { getSql } from '../_db.js'
+import { recordAudit } from '../_audit.js'
 import { getSessionUser, methodNotAllowed } from '../auth/_utils.js'
 
 interface IncomingSelection {
@@ -90,6 +91,10 @@ export default async function handler(req: any, res: any) {
           RETURNING id`,
     ])
     if (committed[1].length !== positions.length) throw new Error('Incomplete ballot transaction')
+    await recordAudit(sql, {
+      type: 'VOTE_CAST', actorId: user.id, actorLabel: user.institutionalId, electionId: election.id,
+      detail: 'One ballot accepted and participation recorded. Candidate selections are not logged.',
+    }).catch(() => undefined)
 
     res.setHeader('Cache-Control', 'no-store')
     return res.status(201).json({ receiptCode, acceptedAt: committed[0][0].acceptedAt })

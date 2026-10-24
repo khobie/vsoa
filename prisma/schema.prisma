@@ -44,12 +44,15 @@ model User {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  roles          UserRole[]
-  eligibility    VoterEligibility[]
-  participation  ParticipationRecord[]
-  candidacies    Candidate[]
-  auditActions   AuditEvent[]
-  votingTokens   VotingToken[]
+  roles                UserRole[]
+  eligibility          VoterEligibility[]
+  participation        ParticipationRecord[]
+  candidacies          Candidate[]
+  auditActions         AuditEvent[]
+  votingTokens         VotingToken[]
+  studentRegistrations StudentRegistration[]
+  phoneOtps            PhoneOtp[]
+  smsMessages          SmsMessage[]
 }
 
 model UserRole {
@@ -66,7 +69,10 @@ model VotingToken {
   id                String    @id @default(uuid())
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId            String
+  election          Election? @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  electionId        String?
   tokenHash         String    @unique
+  encryptedToken    String?
   expiresAt         DateTime
   createdAt         DateTime  @default(now())
   consumedAt        DateTime?
@@ -76,8 +82,71 @@ model VotingToken {
   deliveryDetail    String?
   emailMessageId    String?
   lastSentAt        DateTime?
+  smsMessages       SmsMessage[]
 
   @@index([userId, createdAt])
+  @@index([electionId, createdAt])
+}
+
+model StudentRegistration {
+  id            String   @id @default(uuid())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  election      Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  electionId    String
+  phone         String
+  phoneVerified Boolean  @default(false)
+  registeredAt  DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, electionId])
+  @@index([electionId, registeredAt])
+}
+
+model PhoneOtp {
+  id         String    @id @default(uuid())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  election   Election  @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  electionId String
+  phone      String
+  otpHash    String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, electionId, createdAt])
+}
+
+model RegistrationAttempt {
+  id              String   @id @default(uuid())
+  institutionalId String
+  ipHash          String
+  action          String
+  succeeded       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model SmsMessage {
+  id                String      @id @default(uuid())
+  token             VotingToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  tokenId           String
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  election          Election    @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  electionId        String
+  providerMessageId String?
+  status            String      @default("pending")
+  detail            String?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  createdAt         DateTime    @default(now())
+
+  @@index([electionId, createdAt])
+  @@index([providerMessageId])
 }
 
 model VoterLoginAttempt {
@@ -119,13 +188,17 @@ model Election {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  eligibilityGroups  ElectionGroup[]
-  positions          Position[]
-  eligibility        VoterEligibility[]
-  participation      ParticipationRecord[]
-  ballots            AnonymousBallot[]
-  tallies            TallyRecord[]
-  publication        ResultPublication?
+  eligibilityGroups    ElectionGroup[]
+  positions            Position[]
+  eligibility          VoterEligibility[]
+  participation        ParticipationRecord[]
+  ballots              AnonymousBallot[]
+  tallies              TallyRecord[]
+  publication          ResultPublication?
+  votingTokens         VotingToken[]
+  studentRegistrations StudentRegistration[]
+  phoneOtps            PhoneOtp[]
+  smsMessages          SmsMessage[]
 }
 
 model ElectionGroup {

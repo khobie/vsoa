@@ -47,7 +47,7 @@ export const DDL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_auth_sessions_expiry ON auth_sessions(expires_at)`,
 
-  // Only SHA-256 token hashes are stored. Raw tokens exist only in the email.
+  // Login uses SHA-256 hashes; AES-256-GCM protects tokens needed for SMS export.
   `CREATE TABLE IF NOT EXISTS voting_tokens (
      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
      user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -93,6 +93,65 @@ export const DDL_STATEMENTS: string[] = [
      created_at timestamptz NOT NULL DEFAULT now(),
      updated_at timestamptz NOT NULL DEFAULT now()
    )`,
+
+  `ALTER TABLE voting_tokens ADD COLUMN IF NOT EXISTS election_id uuid REFERENCES elections(id) ON DELETE CASCADE`,
+  `ALTER TABLE voting_tokens ADD COLUMN IF NOT EXISTS encrypted_token text`,
+  `UPDATE voting_tokens vt SET election_id = e.id FROM elections e
+     WHERE vt.election_id IS NULL AND e.slug = 'el-src-2026'`,
+  `DROP INDEX IF EXISTS idx_voting_tokens_active_user`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_voting_tokens_active_user_election ON voting_tokens(user_id, election_id)
+     WHERE consumed_at IS NULL AND invalidated_at IS NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_voting_tokens_election ON voting_tokens(election_id, created_at DESC)`,
+
+  `CREATE TABLE IF NOT EXISTS student_registrations (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     election_id uuid NOT NULL REFERENCES elections(id) ON DELETE CASCADE,
+     phone text NOT NULL,
+     phone_verified boolean NOT NULL DEFAULT false,
+     registered_at timestamptz NOT NULL DEFAULT now(),
+     updated_at timestamptz NOT NULL DEFAULT now(),
+     UNIQUE (user_id, election_id)
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_student_registrations_election ON student_registrations(election_id, registered_at DESC)`,
+
+  `CREATE TABLE IF NOT EXISTS phone_otps (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     election_id uuid NOT NULL REFERENCES elections(id) ON DELETE CASCADE,
+     phone text NOT NULL,
+     otp_hash text NOT NULL,
+     attempts int NOT NULL DEFAULT 0,
+     expires_at timestamptz NOT NULL,
+     consumed_at timestamptz,
+     created_at timestamptz NOT NULL DEFAULT now()
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_phone_otps_student ON phone_otps(user_id, election_id, created_at DESC)`,
+
+  `CREATE TABLE IF NOT EXISTS registration_attempts (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     institutional_id text NOT NULL,
+     ip_hash text NOT NULL,
+     action text NOT NULL,
+     succeeded boolean NOT NULL DEFAULT false,
+     created_at timestamptz NOT NULL DEFAULT now()
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_registration_attempts_recent ON registration_attempts(created_at)`,
+
+  `CREATE TABLE IF NOT EXISTS sms_messages (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     token_id uuid NOT NULL REFERENCES voting_tokens(id) ON DELETE CASCADE,
+     user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     election_id uuid NOT NULL REFERENCES elections(id) ON DELETE CASCADE,
+     provider_message_id text,
+     status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','sent','delivered','failed')),
+     detail text,
+     sent_at timestamptz,
+     delivered_at timestamptz,
+     created_at timestamptz NOT NULL DEFAULT now()
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_sms_messages_election ON sms_messages(election_id, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_sms_messages_provider ON sms_messages(provider_message_id)`,
 
   `CREATE TABLE IF NOT EXISTS election_groups (
      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

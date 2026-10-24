@@ -136,6 +136,9 @@ export default function Login() {
           <ShieldCheck className="h-4 w-4 shrink-0" />
           Your identity verifies eligibility; your ballot choices are stored separately.
         </div>
+        <p className="mt-5 text-center text-sm text-green-200">
+          Haven’t registered? <Link to="/students/register" className="font-semibold text-amber-300 hover:underline">Register with your Student ID</Link>
+        </p>
         <div className="mt-4 text-center">
           <Link to="/" className="inline-flex items-center gap-1 text-sm text-green-300 hover:text-white">
             <ArrowLeft className="h-4 w-4" /> Back to home

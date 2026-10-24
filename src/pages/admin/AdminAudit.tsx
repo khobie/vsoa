@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ScrollText, CheckCircle2, AlertTriangle, XCircle, Hash } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { auditEvents, formatDateTime } from '@/lib/mock-data'
+import { formatDateTime, type AuditEvent } from '@/lib/mock-data'
 import { useElections } from '@/components/elections-provider'
 import { cn } from '@/lib/utils'
 
@@ -16,6 +16,18 @@ const outcomeIcon = {
 export default function AdminAudit() {
   const { elections } = useElections()
   const [filter, setFilter] = useState('all')
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([])
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    void fetch('/api/voters?view=audit', { headers: { Accept: 'application/json' } })
+      .then(async (response) => {
+        const data = await response.json() as { events?: AuditEvent[]; error?: string }
+        if (!response.ok || !Array.isArray(data.events)) throw new Error(data.error || 'Unable to load the audit trail')
+        setAuditEvents(data.events)
+      })
+      .catch((cause) => setError(cause instanceof Error ? cause.message : 'Unable to load the audit trail'))
+  }, [])
 
   const filtered = auditEvents.filter(
     (e) => filter === 'all' || e.electionId === filter || (filter === 'system' && !e.electionId)
@@ -23,6 +35,7 @@ export default function AdminAudit() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
+      {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold">
           <ScrollText className="h-6 w-6 text-primary" /> Audit trail
