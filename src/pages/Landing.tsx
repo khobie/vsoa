@@ -1,34 +1,11 @@
 import { Link, useNavigate } from 'react-router'
-import { ShieldCheck, Lock, Vote, BarChart3, ChevronRight, Clock, Smartphone } from 'lucide-react'
+import { Vote, ChevronRight, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { InstitutionMark } from '@/components/InstitutionMark'
 import { ElectionStatusBadge } from '@/components/StatusBadge'
 import { institution, formatDateTime, turnoutPercent } from '@/lib/mock-data'
 import { useElections } from '@/components/elections-provider'
-
-const features = [
-  {
-    icon: Lock,
-    title: 'Secret Ballot',
-    text: 'Your identity and your choices are stored separately. No one — not even administrators — can see how you voted.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'One Person, One Vote',
-    text: 'Enforced by the database itself, not by your browser. Duplicate or replayed submissions are rejected automatically.',
-  },
-  {
-    icon: BarChart3,
-    title: 'Auditable Results',
-    text: 'Totals are computed from accepted ballots, verified by election officials, and published with a full audit trail.',
-  },
-  {
-    icon: Smartphone,
-    title: 'Vote Anywhere',
-    text: 'Works on phones, tablets, and laptops — designed for slow connections and low data usage.',
-  },
-]
 
 export default function Landing() {
   const navigate = useNavigate()
@@ -152,24 +129,6 @@ export default function Landing() {
               </CardContent>
             </Card>
           ))}
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="border-t bg-slate-50">
-        <div className="mx-auto max-w-6xl px-4 py-16">
-          <h2 className="text-center text-2xl font-bold">Built for trustworthy elections</h2>
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map((f) => (
-              <div key={f.title} className="rounded-xl border bg-white p-6">
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10">
-                  <f.icon className="h-5 w-5 text-primary" />
-                </div>
-                <h3 className="font-semibold">{f.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{f.text}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
