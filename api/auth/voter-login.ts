@@ -22,6 +22,7 @@ export default async function handler(req: any, res: any) {
     const ip = forwarded || String(req.socket?.remoteAddress ?? 'unknown')
     const ipHash = hashSessionToken(`${process.env.SESSION_SECRET ?? 'evote'}:${ip}`)
     const sql = await getSql()
+    await sql`DELETE FROM voter_login_attempts WHERE created_at < now() - interval '1 day'`
     const attempts = await sql`
       SELECT count(*) FILTER (WHERE institutional_id = ${institutionalId})::int AS student_attempts,
              count(*) FILTER (WHERE ip_hash = ${ipHash})::int AS ip_attempts

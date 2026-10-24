@@ -111,12 +111,8 @@ export default async function handler(req: any, res: any) {
       SELECT institutional_id, email FROM users
       WHERE institutional_id = ANY(${students.map((student) => student.institutionalId)})
          OR email = ANY(${students.map((student) => student.email)})`
-    const idOwners = new Map(existing.map((row: any) => [row.institutional_id, row.email]))
     const emailOwners = new Map(existing.map((row: any) => [row.email, row.institutional_id]))
     for (const student of students) {
-      if (idOwners.has(student.institutionalId) && idOwners.get(student.institutionalId) !== student.email) {
-        return res.status(409).json({ error: `${student.institutionalId} is already registered with another email. Correct the existing record before reimporting.` })
-      }
       if (emailOwners.has(student.email) && emailOwners.get(student.email) !== student.institutionalId) {
         return res.status(409).json({ error: `${student.email} already belongs to another Student ID.` })
       }
