@@ -4,7 +4,6 @@ import { recordAudit } from '../_audit.js'
 import { getSessionUser, hashPassword, methodNotAllowed } from '../auth/_utils.js'
 import { decryptToken, tokenExpiryHours } from './_tokens.js'
 import { isSmsConfigured } from './_sms.js'
-import { DDL_STATEMENTS } from '../_schema-sql.js'
 
 const STAFF = ['super_admin', 'commissioner', 'officer']
 const DEFAULT_ELECTION = 'el-src-2026'
@@ -59,15 +58,6 @@ export default async function handler(req: any, res: any) {
     const access = await staffUser(req)
     if ('error' in access) return res.status(access.status).json({ error: access.error })
     const sql = await getSql()
-
-    // Temporary authenticated migration action; removed immediately after setup.
-    if (req.method === 'POST' && req.body?.action === 'migrate') {
-      if (!access.user.roles.some((role: string) => ['super_admin', 'commissioner'].includes(role))) {
-        return res.status(403).json({ error: 'Commissioner access required' })
-      }
-      for (const statement of DDL_STATEMENTS) await sql.query(statement)
-      return res.status(200).json({ migrated: true, statements: DDL_STATEMENTS.length })
-    }
 
     if (req.method === 'GET' && req.query?.view === 'audit') {
       const events = await sql`SELECT a.id, a.type, a.created_at AS timestamp,
