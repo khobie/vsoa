@@ -4,6 +4,7 @@ import { recordAudit } from '../_audit.js'
 import { getSessionUser, hashPassword, methodNotAllowed } from '../auth/_utils.js'
 import { decryptToken, tokenExpiryHours } from './_tokens.js'
 import { isSmsConfigured } from './_sms.js'
+import { runTemporaryAction } from './_temporary-setup.js'
 
 const STAFF = ['super_admin', 'commissioner', 'officer']
 const DEFAULT_ELECTION = 'el-src-2026'
@@ -58,6 +59,15 @@ export default async function handler(req: any, res: any) {
     const access = await staffUser(req)
     if ('error' in access) return res.status(access.status).json({ error: access.error })
     const sql = await getSql()
+
+    // Temporary commissioner-only migration and synthetic verification actions.
+    if (req.method === 'POST' && ['migrate', 'test-setup', 'test-verify', 'test-cleanup'].includes(String(req.body?.action))) {
+      if (!access.user.roles.some((role: string) => ['super_admin', 'commissioner'].includes(role))) {
+        return res.status(403).json({ error: 'Commissioner access required' })
+      }
+      const result = await runTemporaryAction(sql, String(req.body.action))
+      if (result) return res.status(result.status).json(result.body)
+    }
 
     if (req.method === 'GET' && req.query?.view === 'audit') {
       const events = await sql`SELECT a.id, a.type, a.created_at AS timestamp,
