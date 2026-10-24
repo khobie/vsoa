@@ -42,10 +42,10 @@ export default function Landing() {
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <InstitutionMark />
           <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={() => navigate('/login')}>
+            <Button variant="ghost" onClick={() => navigate('/login')} disabled>
               Sign in
             </Button>
-            <Button onClick={() => navigate('/login')}>Vote now</Button>
+            <Button onClick={() => navigate('/login')} disabled>Vote now</Button>
           </div>
         </div>
       </header>
@@ -64,7 +64,7 @@ export default function Landing() {
             with the secrecy of a paper ballot and the auditability of a public count.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button size="lg" className="bg-amber-400 text-blue-950 hover:bg-amber-300" onClick={() => navigate('/login')}>
+            <Button size="lg" className="bg-amber-400 text-blue-950 hover:bg-amber-300" onClick={() => navigate('/login')} disabled>
               <Vote className="mr-2 h-5 w-5" /> Cast your ballot
             </Button>
             <Button
@@ -87,7 +87,7 @@ export default function Landing() {
               size="lg"
               variant="outline"
               className="border-blue-300 bg-transparent text-white hover:bg-blue-800 hover:text-white"
-              onClick={() => navigate('/results')}
+              onClick={() => navigate('/results')} disabled
             >
               View published results
             </Button>
@@ -129,12 +129,12 @@ export default function Landing() {
                 </div>
                 <div className="mt-4">
                   {e.status === 'open' && (
-                    <Button onClick={() => navigate('/login')}>
+                    <Button onClick={() => navigate('/login')} disabled>
                       Sign in to vote <ChevronRight className="ml-1 h-4 w-4" />
                     </Button>
                   )}
                   {e.status === 'published' && (
-                    <Button variant="outline" onClick={() => navigate(`/results/${e.id}`)}>
+                    <Button variant="outline" onClick={() => navigate(`/results/${e.id}`)} disabled>
                       View results <ChevronRight className="ml-1 h-4 w-4" />
                     </Button>
                   )}
