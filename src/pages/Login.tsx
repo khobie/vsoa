@@ -61,7 +61,7 @@ export default function Login() {
             <CardTitle>{mode === 'student' ? 'Student voting access' : 'Administrator sign in'}</CardTitle>
             <CardDescription>
               {mode === 'student'
-                ? 'Use your Student ID and the unique voting token sent to your email.'
+                ? 'Use your Student ID and the unique voting token provided by the Electoral Commission.'
                 : 'Electoral staff use their staff ID and password.'}
             </CardDescription>
           </CardHeader>
@@ -100,15 +100,15 @@ export default function Login() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="credential">{mode === 'student' ? 'Unique voting token' : 'Password'}</Label>
+                <Label htmlFor="credential">{mode === 'student' ? '8-character voting token' : 'Password'}</Label>
                 <Input
                   id="credential"
                   type="password"
-                  placeholder={mode === 'student' ? 'Paste the token from your email' : 'Enter your password'}
+                  placeholder={mode === 'student' ? 'Enter your voting token' : 'Enter your password'}
                   value={credential}
                   onChange={(event) => setCredential(event.target.value)}
                   autoComplete={mode === 'student' ? 'one-time-code' : 'current-password'}
-                  minLength={mode === 'student' ? 20 : 8}
+                  minLength={8}
                   required
                 />
               </div>

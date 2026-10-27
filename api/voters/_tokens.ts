@@ -39,7 +39,8 @@ export function decryptToken(payload: string) {
 
 /** Creates a unique election token, revokes its predecessors, and optionally encrypts it for SMS dispatch. */
 export async function createVotingToken(sql: any, student: TokenStudent, electionId: string, requireEncryption = false) {
-  const token = randomBytes(32).toString('base64url')
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const token = Array.from(randomBytes(8), (byte) => alphabet[byte & 31]).join('')
   const encryptedToken = encryptToken(token)
   if (requireEncryption && !encryptedToken) throw new Error('TOKEN_VAULT_NOT_CONFIGURED')
   const tokenHash = createHash('sha256').update(token).digest('hex')

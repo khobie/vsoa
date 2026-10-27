@@ -14,7 +14,7 @@ export default async function handler(req: any, res: any) {
   try {
     const institutionalId = String(req.body?.institutionalId ?? '').trim().toUpperCase()
     const votingToken = String(req.body?.votingToken ?? '').trim()
-    if (!institutionalId || institutionalId.length > 50 || votingToken.length < 20 || votingToken.length > 200) {
+    if (!institutionalId || institutionalId.length > 50 || votingToken.length < 8 || votingToken.length > 200) {
       return res.status(400).json({ error: 'Enter your Student ID and voting token' })
     }
 
