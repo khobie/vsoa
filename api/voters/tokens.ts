@@ -4,7 +4,7 @@ import { getSessionUser, hashSessionToken, methodNotAllowed } from '../auth/_uti
 import { createVotingToken, decryptToken } from './_tokens.js'
 import { isSmsConfigured, sendSmsToken } from './_sms.js'
 
-const STAFF = ['super_admin', 'commissioner', 'officer']
+const STAFF = ['super_admin']
 export const config = { maxDuration: 60 }
 
 function normalizePhone(value: string) {

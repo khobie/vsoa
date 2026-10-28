@@ -14,18 +14,58 @@ export default async function handler(req: any, res: any) {
 
     const sql = await getSql()
     if (req.method === 'GET') {
+      const applicationPhoto = String(req.query?.applicationPhoto ?? '')
+      if (applicationPhoto) {
+        const photos = await sql`SELECT photo_url FROM candidate_applications WHERE id = ${applicationPhoto}`
+        const photoUrl = String(photos[0]?.photo_url ?? '')
+        const match = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(photoUrl)
+        if (!match) return res.status(404).json({ error: 'Aspirant photo not found' })
+        const contentTypes: Record<string, string> = { jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }
+        res.setHeader('Content-Type', contentTypes[match[1]])
+        res.setHeader('Cache-Control', 'private, max-age=300')
+        return res.status(200).send(Buffer.from(match[2], 'base64'))
+      }
+
+      if (String(req.query?.summary ?? '') === '1') {
+        const counts = await sql`
+          SELECT
+            (SELECT count(*)::int FROM student_registrations r
+             JOIN elections e ON e.id = r.election_id WHERE e.slug = 'el-src-2026') AS "registeredStudents",
+            count(*)::int AS aspirants,
+            count(*) FILTER (WHERE a.status IN ('SUBMITTED', 'UNDER_REVIEW'))::int AS pending
+          FROM candidate_applications a
+          JOIN positions p ON p.id = a.position_id
+          JOIN elections e ON e.id = p.election_id
+          WHERE e.slug = 'el-src-2026'`
+        res.setHeader('Cache-Control', 'no-store')
+        return res.status(200).json({ summary: counts[0] })
+      }
+
       const applications = await sql`
         SELECT a.id, a.institutional_id AS "institutionalId", a.email, a.name,
-               a.year_group AS "yearGroup", a.manifesto, a.bio, a.photo_url AS "photoUrl", a.status,
-               a.position_id AS "positionId", a.submitted_at AS "submittedAt",
+               a.year_group AS "yearGroup", a.manifesto, a.bio,
+               CASE WHEN a.photo_url LIKE 'data:image/%'
+                 THEN '/api/aspirants/applications?applicationPhoto=' || a.id::text
+                 ELSE a.photo_url END AS "photoUrl",
+               a.status, a.position_id AS "positionId", a.submitted_at AS "submittedAt",
                p.title AS "positionTitle", e.name AS "electionName"
         FROM candidate_applications a
         JOIN positions p ON p.id = a.position_id
         JOIN elections e ON e.id = p.election_id
         WHERE e.slug = 'el-src-2026'
         ORDER BY a.submitted_at DESC`
+      const registrationCounts = await sql`
+        SELECT count(*)::int AS "registeredStudents"
+        FROM student_registrations r
+        JOIN elections e ON e.id = r.election_id
+        WHERE e.slug = 'el-src-2026'`
+      const summary = {
+        registeredStudents: registrationCounts[0]?.registeredStudents ?? 0,
+        aspirants: applications.length,
+        pending: applications.filter((application: any) => ['SUBMITTED', 'UNDER_REVIEW'].includes(application.status)).length,
+      }
       res.setHeader('Cache-Control', 'no-store')
-      return res.status(200).json({ applications })
+      return res.status(200).json({ applications, summary })
     }
 
     const id = String(req.body?.id ?? '')

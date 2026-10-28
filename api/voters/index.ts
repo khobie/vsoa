@@ -5,7 +5,7 @@ import { getSessionUser, hashPassword, methodNotAllowed } from '../auth/_utils.j
 import { decryptToken, tokenExpiryHours } from './_tokens.js'
 import { isSmsConfigured } from './_sms.js'
 
-const STAFF = ['super_admin', 'commissioner', 'officer']
+const STAFF = ['super_admin']
 const DEFAULT_ELECTION = 'el-src-2026'
 
 interface ImportStudent {

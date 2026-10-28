@@ -17,6 +17,8 @@ import { ElectionStatusBadge } from '@/components/StatusBadge'
 import { cn } from '@/lib/utils'
 import { turnoutSeries, securityAlerts, turnoutPercent, formatDateTime } from '@/lib/mock-data'
 import { useElections } from '@/components/elections-provider'
+import { useAuth } from '@/components/auth-provider'
+import EcDashboard from './EcDashboard'
 
 const severityStyles = {
   low: 'border-blue-200 bg-blue-50 text-blue-700',
@@ -27,6 +29,9 @@ const severityStyles = {
 export default function AdminDashboard() {
   const navigate = useNavigate()
   const { elections } = useElections()
+  const { user } = useAuth()
+  if (user && !user.roles.includes('super_admin')) return <EcDashboard />
+
   const open = elections.filter((election) => election.status === 'open')
   const openElection = open[0]
   const srcElection = elections.find((election) => election.id === 'el-src-2026')

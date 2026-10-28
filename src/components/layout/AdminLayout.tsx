@@ -20,18 +20,22 @@ import { cn } from '@/lib/utils'
 
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/admin/elections', label: 'Elections', icon: Vote },
-  { to: '/admin/candidates', label: 'Candidates', icon: UserCheck },
-  { to: '/admin/voters', label: 'Voter Register', icon: Users },
-  { to: '/admin/results', label: 'Results & Publication', icon: ClipboardCheck },
-  { to: '/admin/audit', label: 'Audit Trail', icon: ScrollText },
-  { to: '/admin/settings', label: 'Institution Settings', icon: Settings },
+  { to: '/admin/elections', label: 'Elections', icon: Vote, adminOnly: true },
+  { to: '/admin/candidates', label: 'Aspirants & Candidates', icon: UserCheck },
+  { to: '/admin/voters', label: 'Voter Register', icon: Users, adminOnly: true },
+  { to: '/admin/results', label: 'Results & Publication', icon: ClipboardCheck, adminOnly: true },
+  { to: '/admin/audit', label: 'Audit Trail', icon: ScrollText, adminOnly: true },
+  { to: '/admin/settings', label: 'Institution Settings', icon: Settings, adminOnly: true },
 ]
 
 function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
+  const { user } = useAuth()
+  const isSuperAdmin = user?.roles.includes('super_admin') ?? false
+  const visibleItems = navItems.filter((item) => isSuperAdmin || !item.adminOnly)
+
   return (
     <nav className="flex flex-col gap-1">
-      {navItems.map((item) => (
+      {visibleItems.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}

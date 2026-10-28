@@ -17,7 +17,8 @@ export default function RequireRole({ roles }: { roles: Role[] }) {
   }
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
   if (!roles.some((role) => user.roles.includes(role))) {
-    return <Navigate to={user.roles.includes('voter') ? '/dashboard' : '/'} replace />
+    const isStaff = user.roles.some((role) => ['super_admin', 'commissioner', 'officer'].includes(role))
+    return <Navigate to={isStaff ? '/admin' : user.roles.includes('voter') ? '/dashboard' : '/'} replace />
   }
   return <Outlet />
 }
