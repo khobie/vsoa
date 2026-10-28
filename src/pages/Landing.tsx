@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router'
 import { Vote, ChevronRight, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { InstitutionMark } from '@/components/InstitutionMark'
 import { ElectionStatusBadge } from '@/components/StatusBadge'
 import { institution, formatDateTime, turnoutPercent } from '@/lib/mock-data'
@@ -75,6 +76,42 @@ export default function Landing() {
               {open[0].name} — voting closes {formatDateTime(open[0].endAt)}
             </div>
           )}
+        </div>
+      </section>
+
+      {/* Approved candidates by position */}
+      <section className="border-y bg-slate-50">
+        <div className="mx-auto max-w-6xl px-4 py-16">
+          <h2 className="text-2xl font-bold">Candidates and positions</h2>
+          <p className="mt-1 text-muted-foreground">Approved SRC aspirants and the positions they are contesting.</p>
+          <div className="mt-8 grid gap-6 md:grid-cols-2">
+            {elections[0]?.positions.map((position) => (
+              <Card key={position.id}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">{position.title}</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    {position.candidates.length} approved candidate{position.candidates.length === 1 ? '' : 's'}
+                  </p>
+                </CardHeader>
+                <CardContent className="grid gap-3 sm:grid-cols-2">
+                  {position.candidates.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No approved candidates yet.</p>
+                  ) : position.candidates.map((candidate) => (
+                    <div key={candidate.id} className="flex items-center gap-3 rounded-lg border bg-white p-3">
+                      <Avatar className="h-14 w-14 shrink-0 border">
+                        {candidate.photoUrl && <AvatarImage src={candidate.photoUrl} alt={candidate.name} className="object-cover" loading="lazy" />}
+                        <AvatarFallback className="bg-green-100 font-bold text-green-800">{candidate.initials}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold leading-snug">{candidate.name}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{position.title}</p>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </section>
 

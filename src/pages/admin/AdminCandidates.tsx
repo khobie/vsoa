@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Check, X, Eye, Search, Loader2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -116,7 +116,10 @@ export default function AdminCandidates() {
             <p className="py-10 text-center text-sm text-muted-foreground">No aspirant applications match this view.</p>
           ) : filtered.map((application) => (
             <div key={application.id} className="flex flex-wrap items-center gap-4 px-4 py-3">
-              <Avatar className="h-10 w-10"><AvatarFallback className="bg-secondary text-xs font-bold text-secondary-foreground">{initials(application.name)}</AvatarFallback></Avatar>
+              <Avatar className="h-10 w-10">
+                {application.photoUrl && <AvatarImage src={application.photoUrl} alt={application.name} className="object-cover" loading="lazy" />}
+                <AvatarFallback className="bg-secondary text-xs font-bold text-secondary-foreground">{initials(application.name)}</AvatarFallback>
+              </Avatar>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{application.name}</p>
                 <p className="text-xs text-muted-foreground">{application.positionTitle} · {application.institutionalId}</p>
