@@ -4,13 +4,25 @@
  * no vote totals unless the election is PUBLISHED (totals come from the
  * verified tally record, never from raw ballots).
  */
-export default async function handler(_req: any, res: any) {
+export default async function handler(req: any, res: any) {
   try {
     const url = process.env.DATABASE_URL
     if (!url) return res.status(503).json({ error: 'Database not configured' })
 
     const { neon } = await import('@neondatabase/serverless')
     const sql = neon(url)
+
+    const candidatePhoto = String(req.query?.candidatePhoto ?? '')
+    if (candidatePhoto) {
+      const photos = await sql`SELECT photo_url FROM candidates WHERE id = ${candidatePhoto} AND status = 'APPROVED'`
+      const photoUrl = String(photos[0]?.photo_url ?? '')
+      const match = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(photoUrl)
+      if (!match) return res.status(404).json({ error: 'Candidate photo not found' })
+      const contentTypes: Record<string, string> = { jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }
+      res.setHeader('Content-Type', contentTypes[match[1]])
+      res.setHeader('Cache-Control', 'public, max-age=300')
+      return res.status(200).send(Buffer.from(match[2], 'base64'))
+    }
 
     const elections = await sql`
       SELECT id, slug, name, organization, description, status, timezone,
@@ -24,7 +36,9 @@ export default async function handler(_req: any, res: any) {
       FROM positions ORDER BY sort_order`
 
     const candidates = await sql`
-      SELECT c.id, c.position_id AS "positionId", c.name, c.photo_url AS "photoUrl", c.faculty, c.manifesto, c.bio
+      SELECT c.id, c.position_id AS "positionId", c.name, c.faculty, c.manifesto, c.bio,
+             CASE WHEN c.photo_url LIKE 'data:image/%' THEN NULL ELSE c.photo_url END AS "photoUrl",
+             (c.photo_url LIKE 'data:image/%') AS "hasEmbeddedPhoto"
       FROM candidates c
       WHERE c.status = 'APPROVED'`
 
@@ -53,7 +67,12 @@ export default async function handler(_req: any, res: any) {
         .filter((p: any) => p.electionId === e.id)
         .map((p: any) => ({
           ...p,
-          candidates: candidates.filter((c: any) => c.positionId === p.id),
+          candidates: candidates
+            .filter((c: any) => c.positionId === p.id)
+            .map((c: any) => ({
+              ...c,
+              photoUrl: c.hasEmbeddedPhoto ? `/api/elections?candidatePhoto=${encodeURIComponent(c.id)}` : c.photoUrl,
+            })),
         })),
     }))
 
