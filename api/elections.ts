@@ -42,6 +42,40 @@ async function staffResults(sql: Sql, res: any) {
   return res.status(200).json({ elections })
 }
 
+async function ecDashboard(sql: Sql, res: any) {
+  const rows = await sql`
+    SELECT e.id, e.slug, e.name, lower(e.status::text) AS status,
+           e.start_at AS "startAt", e.end_at AS "endAt",
+           (SELECT count(*)::int FROM voter_eligibility ve WHERE ve.election_id = e.id) AS "eligibleVoters",
+           (SELECT count(*)::int FROM student_registrations sr WHERE sr.election_id = e.id) AS "registeredStudents",
+           (SELECT count(*)::int FROM participation_records pr WHERE pr.election_id = e.id) AS participated,
+           (SELECT count(*)::int FROM anonymous_ballots ab WHERE ab.election_id = e.id) AS "ballotCount"
+    FROM elections e WHERE e.slug = 'el-src-2026'`
+  const voterStats = rows[0]
+  if (!voterStats) return res.status(404).json({ error: 'SRC election not found' })
+
+  const trend = await sql`
+    WITH bounds AS (
+      SELECT date_trunc('hour', start_at) AS start_hour,
+             date_trunc('hour', LEAST(now(), end_at)) AS end_hour
+      FROM elections WHERE id = ${voterStats.id}
+    ), hours AS (
+      SELECT generate_series(start_hour, end_hour, interval '1 hour') AS hour
+      FROM bounds WHERE end_hour >= start_hour
+    ), hourly AS (
+      SELECT date_trunc('hour', accepted_at) AS hour, count(*)::int AS ballots
+      FROM participation_records WHERE election_id = ${voterStats.id}
+      GROUP BY date_trunc('hour', accepted_at)
+    )
+    SELECT h.hour, COALESCE(hourly.ballots, 0)::int AS ballots,
+           SUM(COALESCE(hourly.ballots, 0)) OVER (ORDER BY h.hour)::int AS cumulative
+    FROM hours h LEFT JOIN hourly ON hourly.hour = h.hour
+    ORDER BY h.hour`
+
+  res.setHeader('Cache-Control', 'no-store')
+  return res.status(200).json({ voterStats, trend })
+}
+
 async function computeTally(sql: Sql, req: any, res: any, user: any) {
   const electionRef = String(req.body?.electionId ?? '')
   const rows = await sql`
@@ -214,9 +248,12 @@ export default async function handler(req: any, res: any) {
       return res.status(200).send(Buffer.from(match[2], 'base64'))
     }
 
-    if (req.method === 'POST' || String(req.query?.staffResults ?? '') === '1') {
+    const staffResultsRequest = String(req.query?.staffResults ?? '') === '1'
+    const ecDashboardRequest = String(req.query?.ecDashboard ?? '') === '1'
+    if (req.method === 'POST' || staffResultsRequest || ecDashboardRequest) {
       const user = await requireStaff(req, res)
       if (!user) return
+      if (req.method === 'GET' && ecDashboardRequest) return await ecDashboard(sql, res)
       if (req.method === 'GET') return await staffResults(sql, res)
       const action = String(req.body?.action ?? '')
       if (action === 'update-registration') {
