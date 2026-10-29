@@ -54,7 +54,9 @@ export default function Landing() {
             <Button
               size="lg"
               variant="outline"
-              className="border-blue-300 bg-transparent text-white hover:bg-blue-800 hover:text-white"
+              className={registration.studentOpen
+                ? 'border-blue-300 bg-transparent text-white hover:bg-blue-800 hover:text-white'
+                : 'border-slate-400 bg-slate-300 text-slate-600 hover:bg-slate-300 hover:text-slate-600 disabled:opacity-100'}
               onClick={() => navigate('/students/register')}
               disabled={!registration.studentOpen}
             >
@@ -63,7 +65,9 @@ export default function Landing() {
             <Button
               size="lg"
               variant="outline"
-              className="border-blue-300 bg-transparent text-white hover:bg-blue-800 hover:text-white"
+              className={registration.aspirantOpen
+                ? 'border-blue-300 bg-transparent text-white hover:bg-blue-800 hover:text-white'
+                : 'border-slate-400 bg-slate-300 text-slate-600 hover:bg-slate-300 hover:text-slate-600 disabled:opacity-100'}
               onClick={() => navigate('/aspirants/register')}
               disabled={!registration.aspirantOpen}
             >
