@@ -101,9 +101,9 @@ export default function ResultsPage() {
 
       {/* Per-position results */}
       {electionTallies.map((tally) => {
-        const maxVotes = Math.max(...tally.results.map((r) => r.votes))
+        const maxVotes = tally.results.length ? Math.max(...tally.results.map((r) => r.votes)) : 0
         const tied = tally.results.filter((r) => r.votes === maxVotes)
-        const isTie = tied.length > 1
+        const isTie = tally.totalValid > 0 && tied.length > 1
         return (
           <Card key={tally.positionId}>
             <CardHeader>
@@ -147,8 +147,8 @@ export default function ResultsPage() {
                 {[...tally.results]
                   .sort((a, b) => b.votes - a.votes)
                   .map((r, rank) => {
-                    const pct = Math.round((r.votes / tally.totalValid) * 1000) / 10
-                    const winner = r.votes === maxVotes && !isTie
+                    const pct = tally.totalValid > 0 ? Math.round((r.votes / tally.totalValid) * 1000) / 10 : 0
+                    const winner = tally.totalValid > 0 && r.votes === maxVotes && !isTie
                     const candidate = election.positions
                       .flatMap((p) => p.candidates)
                       .find((c) => c.id === r.candidateId)

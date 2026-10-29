@@ -44,12 +44,12 @@ export default function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="candidates" element={<AdminCandidates />} />
+          <Route path="results" element={<AdminResults />} />
           <Route element={<RequireRole roles={['super_admin']} />}>
             <Route path="elections" element={<AdminElections />} />
             <Route path="elections/new" element={<AdminElectionNew />} />
             <Route path="elections/:electionId" element={<AdminElectionDetail />} />
             <Route path="voters" element={<AdminVoters />} />
-            <Route path="results" element={<AdminResults />} />
             <Route path="audit" element={<AdminAudit />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>

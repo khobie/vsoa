@@ -23,7 +23,7 @@ const navItems = [
   { to: '/admin/elections', label: 'Elections', icon: Vote, adminOnly: true },
   { to: '/admin/candidates', label: 'Aspirants & Candidates', icon: UserCheck },
   { to: '/admin/voters', label: 'Voter Register', icon: Users, adminOnly: true },
-  { to: '/admin/results', label: 'Results & Publication', icon: ClipboardCheck, adminOnly: true },
+  { to: '/admin/results', label: 'Results & Publication', icon: ClipboardCheck },
   { to: '/admin/audit', label: 'Audit Trail', icon: ScrollText, adminOnly: true },
   { to: '/admin/settings', label: 'Institution Settings', icon: Settings, adminOnly: true },
 ]
