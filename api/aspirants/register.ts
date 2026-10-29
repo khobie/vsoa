@@ -1,5 +1,6 @@
 import { getSql } from '../_db.js'
 import { methodNotAllowed } from '../auth/_utils.js'
+import { getRegistrationSettings } from '../_registration-settings.js'
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return methodNotAllowed(res, 'POST')
@@ -27,6 +28,10 @@ export default async function handler(req: any, res: any) {
     }
 
     const sql = await getSql()
+    const registration = await getRegistrationSettings(sql)
+    if (!registration.aspirantOpen) {
+      return res.status(403).json({ error: 'Aspirant registration is currently closed. Contact the Electoral Commission for assistance.' })
+    }
     const positions = await sql`
       SELECT p.id FROM positions p
       JOIN elections e ON e.id = p.election_id

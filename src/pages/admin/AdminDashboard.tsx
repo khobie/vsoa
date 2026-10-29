@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import {
   Users,
@@ -9,14 +10,20 @@ import {
   ChevronRight,
   HardDrive,
   BellRing,
+  Megaphone,
+  Save,
+  Loader2,
 } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { ElectionStatusBadge } from '@/components/StatusBadge'
 import { cn } from '@/lib/utils'
 import { turnoutSeries, securityAlerts, turnoutPercent, formatDateTime } from '@/lib/mock-data'
-import { useElections } from '@/components/elections-provider'
+import { useElections, type RegistrationSettings } from '@/components/elections-provider'
 import { useAuth } from '@/components/auth-provider'
 import EcDashboard from './EcDashboard'
 
@@ -28,8 +35,40 @@ const severityStyles = {
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
-  const { elections } = useElections()
+  const { elections, registration, updateRegistration } = useElections()
   const { user } = useAuth()
+  const [draft, setDraft] = useState<RegistrationSettings>(registration)
+  const [savingRegistration, setSavingRegistration] = useState(false)
+  const [registrationNotice, setRegistrationNotice] = useState('')
+  const [registrationError, setRegistrationError] = useState('')
+
+  async function saveRegistration(next: RegistrationSettings) {
+    setSavingRegistration(true)
+    setRegistrationNotice('')
+    setRegistrationError('')
+    try {
+      const response = await fetch('/api/elections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          action: 'update-registration',
+          studentOpen: next.studentOpen,
+          aspirantOpen: next.aspirantOpen,
+          announcement: next.announcement,
+        }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'Unable to save registration settings')
+      setDraft(data.registration)
+      updateRegistration(data.registration)
+      setRegistrationNotice('Registration controls and public announcement saved.')
+    } catch (cause) {
+      setRegistrationError(cause instanceof Error ? cause.message : 'Unable to save registration settings')
+    } finally {
+      setSavingRegistration(false)
+    }
+  }
+
   if (user && !user.roles.includes('super_admin')) return <EcDashboard />
 
   const open = elections.filter((election) => election.status === 'open')
@@ -74,6 +113,75 @@ export default function AdminDashboard() {
           </Card>
         ))}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Megaphone className="h-5 w-5 text-primary" /> Registration controls & public announcement
+          </CardTitle>
+          <CardDescription>
+            Opening or closing takes effect immediately on the public forms and server-side submissions.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {registrationNotice && (
+            <Alert className="border-emerald-200 bg-emerald-50">
+              <AlertDescription className="text-emerald-800">{registrationNotice}</AlertDescription>
+            </Alert>
+          )}
+          {registrationError && (
+            <Alert variant="destructive"><AlertDescription>{registrationError}</AlertDescription></Alert>
+          )}
+          <div className="grid gap-4 md:grid-cols-2">
+            {([
+              { key: 'studentOpen' as const, label: 'Student registration', description: 'Student ID lookup, telephone registration, and token generation.' },
+              { key: 'aspirantOpen' as const, label: 'Aspirant registration', description: 'New aspirant applications, position selections, and photo uploads.' },
+            ]).map((control) => (
+              <div key={control.key} className="rounded-lg border p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">{control.label}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{control.description}</p>
+                  </div>
+                  <span className={cn(
+                    'shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold',
+                    draft[control.key] ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800',
+                  )}>
+                    {draft[control.key] ? 'Open' : 'Closed'}
+                  </span>
+                </div>
+                <Button
+                  className={cn('mt-4 w-full', draft[control.key] && 'border-red-200 text-red-700 hover:bg-red-50')}
+                  variant={draft[control.key] ? 'outline' : 'default'}
+                  disabled={savingRegistration}
+                  onClick={() => void saveRegistration({ ...draft, [control.key]: !draft[control.key] })}
+                >
+                  {savingRegistration && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {draft[control.key] ? `Close ${control.label.toLowerCase()}` : `Open ${control.label.toLowerCase()}`}
+                </Button>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="public-announcement">Homepage announcement</Label>
+            <Textarea
+              id="public-announcement"
+              className="min-h-24"
+              maxLength={500}
+              placeholder="Example: SRC voter registration will start on 2 November at 8:00 AM."
+              value={draft.announcement}
+              onChange={(event) => setDraft((current) => ({ ...current, announcement: event.target.value }))}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">Leave blank to hide the announcement. {draft.announcement.length}/500 characters.</p>
+              <Button disabled={savingRegistration} onClick={() => void saveRegistration(draft)}>
+                {savingRegistration ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save announcement
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-5">
         {/* Turnout chart */}

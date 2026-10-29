@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router'
-import { Vote, ChevronRight, Clock } from 'lucide-react'
+import { Vote, ChevronRight, Clock, Megaphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -10,7 +10,7 @@ import { useElections } from '@/components/elections-provider'
 
 export default function Landing() {
   const navigate = useNavigate()
-  const { elections } = useElections()
+  const { elections, registration } = useElections()
   const open = elections.filter((election) => election.status === 'open')
 
   return (
@@ -41,6 +41,12 @@ export default function Landing() {
             Cast your ballot in the School of Anaesthesia Ridge SRC Election —
             with the secrecy of a paper ballot and the auditability of a public count.
           </p>
+          {registration.announcement && (
+            <div className="mx-auto mt-6 flex max-w-2xl items-start gap-3 rounded-lg border border-amber-300/40 bg-amber-300/10 px-4 py-3 text-left text-sm text-amber-100">
+              <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+              <p className="whitespace-pre-wrap">{registration.announcement}</p>
+            </div>
+          )}
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Button size="lg" className="bg-amber-400 text-blue-950 hover:bg-amber-300" onClick={() => navigate('/login')} disabled>
               <Vote className="mr-2 h-5 w-5" /> Cast your ballot
@@ -50,16 +56,18 @@ export default function Landing() {
               variant="outline"
               className="border-blue-300 bg-transparent text-white hover:bg-blue-800 hover:text-white"
               onClick={() => navigate('/students/register')}
+              disabled={!registration.studentOpen}
             >
-              Student registration
+              {registration.studentOpen ? 'Student registration' : 'Student registration closed'}
             </Button>
             <Button
               size="lg"
               variant="outline"
               className="border-blue-300 bg-transparent text-white hover:bg-blue-800 hover:text-white"
               onClick={() => navigate('/aspirants/register')}
+              disabled={!registration.aspirantOpen}
             >
-              Aspirant registration
+              {registration.aspirantOpen ? 'Aspirant registration' : 'Aspirant registration closed'}
             </Button>
             <Button
               size="lg"

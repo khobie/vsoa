@@ -35,9 +35,25 @@ interface ApiElection extends Omit<Election, 'id' | 'status' | 'verificationStat
   positions: ApiPosition[]
 }
 
+export interface RegistrationSettings {
+  studentOpen: boolean
+  aspirantOpen: boolean
+  announcement: string
+  updatedAt: string | null
+}
+
+const DEFAULT_REGISTRATION: RegistrationSettings = {
+  studentOpen: true,
+  aspirantOpen: true,
+  announcement: '',
+  updatedAt: null,
+}
+
 interface ElectionsContextValue {
   elections: Election[]
   tallies: Record<string, PositionTally[]>
+  registration: RegistrationSettings
+  updateRegistration: (settings: RegistrationSettings) => void
   getElection: (id: string) => Election | undefined
   refresh: () => Promise<void>
 }
@@ -108,6 +124,7 @@ function normalizeTallies(election: Election, raw: ApiTally[] | null): PositionT
 export function ElectionsProvider({ children }: { children: ReactNode }) {
   const [elections, setElections] = useState<Election[]>([])
   const [tallies, setTallies] = useState<Record<string, PositionTally[]>>({})
+  const [registration, setRegistration] = useState<RegistrationSettings>(DEFAULT_REGISTRATION)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -118,11 +135,12 @@ export function ElectionsProvider({ children }: { children: ReactNode }) {
       const endpoint = import.meta.env.VITE_ELECTIONS_API_URL ?? '/api/elections'
       const response = await fetch(endpoint, { headers: { Accept: 'application/json' } })
       if (!response.ok) throw new Error(`Election service returned ${response.status}`)
-      const data = await response.json() as { elections?: ApiElection[]; error?: string }
+      const data = await response.json() as { elections?: ApiElection[]; registration?: RegistrationSettings; error?: string }
       if (!Array.isArray(data.elections)) throw new Error(data.error || 'Election service returned an invalid response')
       const srcElections = data.elections.filter((raw) => (raw.slug || raw.id) === 'el-src-2026')
       const normalized = srcElections.map(normalizeElection)
       setElections(normalized)
+      setRegistration(data.registration ?? DEFAULT_REGISTRATION)
       setTallies(Object.fromEntries(srcElections.map((raw, index) => [
         normalized[index].id,
         normalizeTallies(normalized[index], raw.publishedResults),
@@ -141,9 +159,11 @@ export function ElectionsProvider({ children }: { children: ReactNode }) {
   const value = useMemo<ElectionsContextValue>(() => ({
     elections,
     tallies,
+    registration,
+    updateRegistration: setRegistration,
     getElection: (id) => elections.find((election) => election.id === id),
     refresh,
-  }), [elections, tallies, refresh])
+  }), [elections, tallies, registration, refresh])
 
   if (loading) {
     return (

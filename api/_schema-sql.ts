@@ -94,6 +94,15 @@ export const DDL_STATEMENTS: string[] = [
      updated_at timestamptz NOT NULL DEFAULT now()
    )`,
 
+  `CREATE TABLE IF NOT EXISTS election_registration_settings (
+     election_id uuid PRIMARY KEY REFERENCES elections(id) ON DELETE CASCADE,
+     student_open boolean NOT NULL DEFAULT true,
+     aspirant_open boolean NOT NULL DEFAULT true,
+     announcement text NOT NULL DEFAULT '',
+     updated_by uuid REFERENCES users(id),
+     updated_at timestamptz NOT NULL DEFAULT now()
+   )`,
+
   `ALTER TABLE voting_tokens ADD COLUMN IF NOT EXISTS election_id uuid REFERENCES elections(id) ON DELETE CASCADE`,
   `ALTER TABLE voting_tokens ADD COLUMN IF NOT EXISTS encrypted_token text`,
   `UPDATE voting_tokens vt SET election_id = e.id FROM elections e

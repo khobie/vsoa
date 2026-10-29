@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { getSql } from './_db.js'
 import { recordAudit } from './_audit.js'
 import { getSessionUser, methodNotAllowed } from './auth/_utils.js'
+import { getRegistrationSettings, saveRegistrationSettings } from './_registration-settings.js'
 
 const STAFF = ['super_admin', 'commissioner', 'officer']
 
@@ -218,9 +219,33 @@ export default async function handler(req: any, res: any) {
       if (!user) return
       if (req.method === 'GET') return await staffResults(sql, res)
       const action = String(req.body?.action ?? '')
+      if (action === 'update-registration') {
+        if (!user.roles.includes('super_admin')) {
+          return res.status(403).json({ error: 'Full administrator access is required to change registration settings' })
+        }
+        const studentOpen = req.body?.studentOpen
+        const aspirantOpen = req.body?.aspirantOpen
+        const announcement = req.body?.announcement
+        if (typeof studentOpen !== 'boolean' || typeof aspirantOpen !== 'boolean' ||
+            typeof announcement !== 'string' || announcement.trim().length > 500) {
+          return res.status(400).json({ error: 'Valid registration states and an announcement of up to 500 characters are required' })
+        }
+        const registration = await saveRegistrationSettings(sql, 'el-src-2026', {
+          studentOpen, aspirantOpen, announcement: announcement.trim(),
+        }, user.id)
+        if (!registration) return res.status(404).json({ error: 'SRC election not found' })
+        const srcElection = await sql`SELECT id FROM elections WHERE slug = 'el-src-2026'`
+        await recordAudit(sql, {
+          type: 'REGISTRATION_SETTINGS_UPDATED', actorId: user.id, actorLabel: user.institutionalId,
+          electionId: srcElection[0].id,
+          detail: `Student registration ${studentOpen ? 'opened' : 'closed'}; aspirant registration ${aspirantOpen ? 'opened' : 'closed'}; public announcement updated.`,
+        }).catch(() => undefined)
+        res.setHeader('Cache-Control', 'no-store')
+        return res.status(200).json({ registration })
+      }
       if (action === 'compute-tally') return await computeTally(sql, req, res, user)
       if (action === 'verify' || action === 'publish') return await verifyOrPublish(sql, req, res, user, action)
-      return res.status(400).json({ error: 'A valid results action is required' })
+      return res.status(400).json({ error: 'A valid election action is required' })
     }
 
     const elections = await sql`
@@ -275,7 +300,8 @@ export default async function handler(req: any, res: any) {
         })),
     }))
 
-    return res.status(200).json({ elections: payload })
+    const registration = await getRegistrationSettings(sql)
+    return res.status(200).json({ elections: payload, registration })
   } catch (e: any) {
     return res.status(500).json({ error: 'Unable to process the election request', detail: String(e?.message ?? e).slice(0, 300) })
   }

@@ -8,11 +8,13 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Checkbox } from '@/components/ui/checkbox'
 import { InstitutionMark } from '@/components/InstitutionMark'
+import { useElections } from '@/components/elections-provider'
 
 type Step = 'id' | 'confirm' | 'phone' | 'otp' | 'done'
 interface StudentDetails { name: string; institutionalId: string; programme: string; yearGroup: string }
 
 export default function StudentRegistration() {
+  const { registration } = useElections()
   const [step, setStep] = useState<Step>('id')
   const [institutionalId, setInstitutionalId] = useState('')
   const [student, setStudent] = useState<StudentDetails | null>(null)
@@ -67,6 +69,27 @@ export default function StudentRegistration() {
       setStep('done')
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to verify the code') }
     finally { setBusy(false) }
+  }
+
+  if (!registration.studentOpen) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-green-950 to-green-900 px-4 py-10">
+        <div className="mx-auto max-w-lg">
+          <div className="mb-8 flex flex-col items-center text-center"><InstitutionMark dark /><p className="mt-3 text-sm text-green-200">Student registration for the SRC election</p></div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Student registration is closed</CardTitle>
+              <CardDescription>The Electoral Commission is not accepting student registrations at this time.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {registration.announcement && <Alert><AlertCircle className="h-4 w-4" /><AlertDescription className="whitespace-pre-wrap">{registration.announcement}</AlertDescription></Alert>}
+              <p className="text-sm text-muted-foreground">Please check the homepage announcement or contact the Electoral Commission for assistance.</p>
+              <Link to="/" className="block"><Button variant="outline" className="w-full">Return to homepage</Button></Link>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -24,7 +24,7 @@ const initialForm = {
 }
 
 export default function AspirantRegistration() {
-  const { elections } = useElections()
+  const { elections, registration } = useElections()
   const election = elections[0]
   const [form, setForm] = useState(initialForm)
   const [busy, setBusy] = useState(false)
@@ -75,6 +75,27 @@ export default function AspirantRegistration() {
     } finally {
       setBusy(false)
     }
+  }
+
+  if (!registration.aspirantOpen) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-950 to-blue-900 px-4 py-8">
+        <div className="mx-auto max-w-lg">
+          <div className="mb-6 flex flex-col items-center text-center"><InstitutionMark dark /><p className="mt-3 text-sm text-blue-200">SRC aspirant registration</p></div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Aspirant registration is closed</CardTitle>
+              <CardDescription>The Electoral Commission is not accepting aspirant applications at this time.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {registration.announcement && <Alert><AlertTitle>EC announcement</AlertTitle><AlertDescription className="whitespace-pre-wrap">{registration.announcement}</AlertDescription></Alert>}
+              <p className="text-sm text-muted-foreground">Please check the homepage announcement or contact the Electoral Commission for assistance.</p>
+              <Link to="/" className="block"><Button variant="outline" className="w-full">Return to homepage</Button></Link>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (

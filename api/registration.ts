@@ -4,6 +4,7 @@ import { recordAudit } from './_audit.js'
 import { hashSessionToken, methodNotAllowed } from './auth/_utils.js'
 import { createVotingToken } from './voters/_tokens.js'
 import { isSmsConfigured, sendSmsMessage } from './voters/_sms.js'
+import { getRegistrationSettings } from './_registration-settings.js'
 
 function normalizePhone(value: string) {
   const compact = value.replace(/[\s()-]/g, '')
@@ -59,6 +60,10 @@ export default async function handler(req: any, res: any) {
     const ip = forwarded || String(req.socket?.remoteAddress ?? 'unknown')
     const ipHash = hashSessionToken(`${process.env.SESSION_SECRET ?? 'evote'}:${ip}`)
     const sql = await getSql()
+    const registration = await getRegistrationSettings(sql, electionRef)
+    if (!registration.studentOpen) {
+      return res.status(403).json({ error: 'Student registration is currently closed. Contact the Electoral Commission for assistance.' })
+    }
     if (await rateLimited(sql, institutionalId, ipHash)) {
       return res.status(429).json({ error: 'Too many attempts. Wait 15 minutes before trying again.' })
     }
