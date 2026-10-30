@@ -52,6 +52,36 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({ corrected: true })
     }
 
+    if (action === 'admin-register') {
+      if (!institutionalId) return res.status(400).json({ error: 'Select an eligible student' })
+      const students = await sql`SELECT u.id, u.institutional_id AS "institutionalId", u.name,
+          e.id AS election_id, r.id AS registration_id, p.id AS participation_id
+        FROM users u JOIN elections e ON (e.slug = ${electionRef} OR e.id::text = ${electionRef})
+        JOIN voter_eligibility ve ON ve.voter_id = u.id AND ve.election_id = e.id
+        LEFT JOIN student_registrations r ON r.user_id = u.id AND r.election_id = e.id
+        LEFT JOIN participation_records p ON p.voter_id = u.id AND p.election_id = e.id
+        WHERE u.institutional_id = ${institutionalId} AND u.is_active = true`
+      const student = students[0]
+      if (!student) return res.status(404).json({ error: 'Active eligible student not found' })
+      if (student.participation_id) return res.status(409).json({ error: 'This student has already voted' })
+      if (student.registration_id) return res.status(409).json({ error: 'This student is already registered. Use View OTP or Reissue instead.' })
+      const inserted = await sql`INSERT INTO student_registrations (user_id, election_id, phone, phone_verified)
+        VALUES (${student.id}, ${student.election_id}, '', false)
+        ON CONFLICT (user_id, election_id) DO NOTHING RETURNING id`
+      if (!inserted[0]) return res.status(409).json({ error: 'This student is already registered. Use View OTP or Reissue instead.' })
+      let generated
+      try {
+        generated = await createVotingToken(sql, student, student.election_id, true)
+      } catch (error) {
+        await sql`DELETE FROM student_registrations WHERE id = ${inserted[0].id}`.catch(() => undefined)
+        throw error
+      }
+      await recordAudit(sql, { type: 'VOTER_REGISTERED_BY_ADMIN', actorId: actor.id, actorLabel: actor.institutionalId,
+        electionId: student.election_id, detail: `Administrator registered ${institutionalId} without a telephone and generated token ${generated.tokenId}.` }).catch(() => undefined)
+      return res.status(200).json({ registered: true, tokenId: generated.tokenId,
+        message: 'Registration completed and OTP generated. Use View OTP or export selected OTPs to share it securely.' })
+    }
+
     if (action === 'reissue') {
       if (!institutionalId) return res.status(400).json({ error: 'Select a registered student' })
       const students = await sql`SELECT u.id, u.institutional_id AS "institutionalId", u.name,
@@ -67,6 +97,8 @@ export default async function handler(req: any, res: any) {
       const generated = await createVotingToken(sql, student, student.election_id, true)
       await recordAudit(sql, { type: 'VOTING_TOKEN_REISSUED', actorId: actor.id, actorLabel: actor.institutionalId,
         electionId: student.election_id, detail: `Token ${generated.tokenId} replaced for ${institutionalId}; older tokens revoked.` }).catch(() => undefined)
+      if (!student.phone) return res.status(200).json({ status: 'pending', sent: 0, failed: 0,
+        detail: 'No telephone provided; use View OTP or export selected OTPs.' })
       const delivery = isSmsConfigured() ? await sendSmsToken(sql, {
         tokenId: generated.tokenId, userId: student.id, electionId: student.election_id,
         institutionalId, phone: student.phone, token: generated.token,
@@ -82,7 +114,7 @@ export default async function handler(req: any, res: any) {
         FROM elections e
         JOIN voter_eligibility ve ON ve.election_id = e.id
         JOIN users u ON u.id = ve.voter_id AND u.is_active = true
-        JOIN student_registrations r ON r.user_id = u.id AND r.election_id = e.id
+        JOIN student_registrations r ON r.user_id = u.id AND r.election_id = e.id AND r.phone <> ''
         JOIN LATERAL (
           SELECT id, encrypted_token FROM voting_tokens vt
           WHERE vt.user_id = u.id AND vt.election_id = e.id

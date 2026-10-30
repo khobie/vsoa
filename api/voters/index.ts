@@ -80,7 +80,7 @@ export default async function handler(req: any, res: any) {
         JOIN users u ON u.id = r.user_id
         JOIN voting_tokens t ON t.user_id = r.user_id AND t.election_id = r.election_id
         LEFT JOIN participation_records p ON p.voter_id = r.user_id AND p.election_id = r.election_id
-        WHERE r.election_id = ${election.id} AND p.id IS NULL
+        WHERE r.election_id = ${election.id} AND p.id IS NULL AND r.phone <> ''
           AND t.consumed_at IS NULL AND t.invalidated_at IS NULL AND t.expires_at > now()
         ORDER BY u.name`
       const lines = ['student_id,full_name,telephone,voting_token,message,sms_status']
