@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Upload, Search, ShieldCheck, FileSpreadsheet, Users, CheckCircle2, RefreshCw,
-  Download, Loader2, KeyRound, MessageSquareText, Phone, Send, Pencil,
+  Download, Loader2, KeyRound, MessageSquareText, Phone, Send, Pencil, Filter, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -66,12 +67,23 @@ function parseStudentCsv(text: string): ImportStudent[] {
   }))
 }
 
+function isTokenExpired(voter: Voter) {
+  return Boolean(voter.tokenExpiresAt && new Date(voter.tokenExpiresAt).getTime() <= Date.now())
+}
+
+function hasExportableToken(voter: Voter) {
+  return Boolean(
+    voter.registeredAt && voter.tokenId && !voter.tokenConsumedAt && !voter.tokenInvalidatedAt &&
+    !voter.votedAt && !isTokenExpired(voter),
+  )
+}
+
 function smsLabel(voter: Voter) {
   if (!voter.registeredAt) return 'Not registered'
   if (!voter.tokenCreatedAt) return 'No token'
   if (voter.tokenConsumedAt) return 'Token used'
   if (voter.tokenInvalidatedAt) return 'Token replaced'
-  if (voter.tokenExpiresAt && new Date(voter.tokenExpiresAt).getTime() <= Date.now()) return 'Token expired'
+  if (isTokenExpired(voter)) return 'Token expired'
   if (voter.smsStatus === 'delivered') return 'SMS delivered'
   if (voter.smsStatus === 'sent') return 'SMS sent'
   if (voter.smsStatus === 'failed') return 'SMS failed'
@@ -88,6 +100,9 @@ export default function AdminVoters() {
   const [voters, setVoters] = useState<Voter[]>([]); const [summary, setSummary] = useState<Summary>(emptySummary)
   const [smsConfigured, setSmsConfigured] = useState(false); const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState(''); const [importOpen, setImportOpen] = useState(false)
+  const [yearFilter, setYearFilter] = useState('all'); const [departmentFilter, setDepartmentFilter] = useState('all')
+  const [registrationFilter, setRegistrationFilter] = useState('all'); const [tokenFilter, setTokenFilter] = useState('all')
+  const [voteFilter, setVoteFilter] = useState('all'); const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [importStudents, setImportStudents] = useState<ImportStudent[]>([]); const [fileName, setFileName] = useState('')
   const [importErrors, setImportErrors] = useState<string[]>([]); const [importing, setImporting] = useState(false)
   const [busyId, setBusyId] = useState(''); const [notice, setNotice] = useState('')
@@ -100,15 +115,58 @@ export default function AdminVoters() {
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.error || 'Unable to load the voter register')
       setVoters(data.voters); setSummary(data.summary); setSmsConfigured(data.smsConfigured); setImportErrors([])
+      setSelectedIds((current) => new Set([...current].filter((id) => data.voters.some((voter: Voter) => voter.id === id))))
     } catch (cause) { setImportErrors([cause instanceof Error ? cause.message : 'Unable to load the voter register']) }
     finally { setLoading(false) }
   }, [])
   useEffect(() => { void loadVoters() }, [loadVoters])
 
+  const yearGroups = useMemo(() => [...new Set(voters.map((voter) => voter.yearGroup).filter(Boolean) as string[])].sort(), [voters])
+  const departments = useMemo(() => [...new Set(voters.map((voter) => voter.department).filter(Boolean) as string[])].sort(), [voters])
+
   const filtered = voters.filter((voter) => {
-    const search = query.toLowerCase()
-    return !search || voter.name.toLowerCase().includes(search) || voter.institutionalId.toLowerCase().includes(search) || (voter.phone ?? '').includes(search)
+    const search = query.trim().toLowerCase()
+    if (search && !voter.name.toLowerCase().includes(search) && !voter.institutionalId.toLowerCase().includes(search) && !(voter.phone ?? '').includes(search)) return false
+    if (yearFilter !== 'all' && voter.yearGroup !== yearFilter) return false
+    if (departmentFilter !== 'all' && voter.department !== departmentFilter) return false
+    if (registrationFilter === 'registered' && !voter.registeredAt) return false
+    if (registrationFilter === 'not_registered' && voter.registeredAt) return false
+    if (voteFilter === 'voted' && !voter.votedAt) return false
+    if (voteFilter === 'not_voted' && voter.votedAt) return false
+    if (tokenFilter === 'available' && !hasExportableToken(voter)) return false
+    if (tokenFilter === 'no_token' && voter.tokenCreatedAt) return false
+    if (tokenFilter === 'used' && !voter.tokenConsumedAt) return false
+    if (tokenFilter === 'pending' && (!voter.tokenCreatedAt || voter.smsStatus || voter.tokenConsumedAt || voter.tokenInvalidatedAt)) return false
+    if (tokenFilter === 'sent' && !['sent', 'delivered'].includes(voter.smsStatus ?? '')) return false
+    if (tokenFilter === 'failed' && voter.smsStatus !== 'failed') return false
+    return true
   })
+
+  const filteredExportableIds = filtered.filter(hasExportableToken).map((voter) => voter.id)
+  const allFilteredSelected = filteredExportableIds.length > 0 && filteredExportableIds.every((id) => selectedIds.has(id))
+  const filtersActive = Boolean(query || yearFilter !== 'all' || departmentFilter !== 'all' || registrationFilter !== 'all' || tokenFilter !== 'all' || voteFilter !== 'all')
+
+  function clearFilters() {
+    setQuery(''); setYearFilter('all'); setDepartmentFilter('all'); setRegistrationFilter('all'); setTokenFilter('all'); setVoteFilter('all')
+  }
+
+  function toggleVoter(id: string, checked: boolean) {
+    setSelectedIds((current) => {
+      const next = new Set(current)
+      if (checked) next.add(id); else next.delete(id)
+      return next
+    })
+  }
+
+  function toggleFiltered(checked: boolean) {
+    setSelectedIds((current) => {
+      const next = new Set(current)
+      for (const id of filteredExportableIds) {
+        if (checked) next.add(id); else next.delete(id)
+      }
+      return next
+    })
+  }
 
   async function chooseFile(file?: File) {
     setImportErrors([]); setImportStudents([]); setFileName(file?.name ?? '')
@@ -157,6 +215,25 @@ export default function AdminVoters() {
     finally { setBusyId('') }
   }
 
+  async function exportSelectedTokens() {
+    if (!selectedIds.size) return
+    setBusyId('export-selected'); setNotice('')
+    try {
+      const response = await fetch('/api/voters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ action: 'export-selected-tokens', electionId: 'el-src-2026', voterIds: [...selectedIds] }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'Unable to export selected voting tokens')
+      const url = URL.createObjectURL(new Blob([data.csv], { type: 'text/csv;charset=utf-8' }))
+      const link = document.createElement('a')
+      link.href = url; link.download = 'src-selected-voting-tokens.csv'; link.click(); URL.revokeObjectURL(url)
+      setNotice(`${data.exported} selected voting token(s) downloaded.${data.skipped ? ` ${data.skipped} selected student(s) were skipped because no valid, unused token was available.` : ''} Keep the CSV secure and delete it after approved use.`)
+    } catch (cause) { setNotice(cause instanceof Error ? cause.message : 'Unable to export selected voting tokens') }
+    finally { setBusyId('') }
+  }
+
   function downloadTemplate() {
     const csv = 'student_id,full_name,email,programme,year_group\nSAR-0001,Example Student,,Anaesthesia,Level 300\n'
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); const link = document.createElement('a')
@@ -188,9 +265,42 @@ export default function AdminVoters() {
       </div>
       <p className="text-xs text-muted-foreground">SMS pending: {summary.pending} · Failed: {summary.failed} · Confirmed delivered: {summary.delivered}</p>
 
-      <Card><CardHeader className="flex-col gap-4 space-y-0 sm:flex-row sm:items-center sm:justify-between"><div><CardTitle className="text-lg">Student registration and SMS status</CardTitle><p className="mt-1 text-xs text-muted-foreground">Raw voting tokens never appear in this table. Participation never reveals ballot choices.</p></div><div className="relative"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="w-full pl-9 sm:w-72" placeholder="Search name, ID or phone…" value={query} onChange={(event) => setQuery(event.target.value)} /></div></CardHeader>
-        <CardContent className="overflow-x-auto p-0"><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Programme</TableHead><TableHead>Registration / phone</TableHead><TableHead>Token / SMS</TableHead><TableHead>Vote</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-          <TableBody>{loading ? <TableRow><TableCell colSpan={6} className="py-12 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow> : filtered.length === 0 ? <TableRow><TableCell colSpan={6} className="py-12 text-center text-muted-foreground">{voters.length ? 'No students match this search.' : 'No eligible students imported yet.'}</TableCell></TableRow> : filtered.map((voter) => <TableRow key={voter.id}>
+      <Card className="border-emerald-100 shadow-sm">
+        <CardHeader className="pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2 text-lg"><Filter className="h-5 w-5 text-emerald-700" /> Filter voters and select OTPs</CardTitle>
+            {filtersActive && <Button variant="ghost" size="sm" onClick={clearFilters}><X className="mr-1 h-4 w-4" />Clear filters</Button>}
+          </div>
+          <p className="text-xs text-muted-foreground">Showing {filtered.length} of {voters.length} eligible students. Only valid, unused tokens for students who have not voted can be exported.</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input className="w-full pl-9" placeholder="Search name, Student ID or telephone…" value={query} onChange={(event) => setQuery(event.target.value)} />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="space-y-2"><Label htmlFor="year-filter">Year group</Label><select id="year-filter" className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={yearFilter} onChange={(event) => setYearFilter(event.target.value)}><option value="all">All year groups</option>{yearGroups.map((year) => <option key={year} value={year}>{year}</option>)}</select></div>
+            <div className="space-y-2"><Label htmlFor="department-filter">Programme</Label><select id="department-filter" className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)}><option value="all">All programmes</option>{departments.map((department) => <option key={department} value={department}>{department}</option>)}</select></div>
+            <div className="space-y-2"><Label htmlFor="registration-filter">Registration</Label><select id="registration-filter" className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={registrationFilter} onChange={(event) => setRegistrationFilter(event.target.value)}><option value="all">All registrations</option><option value="registered">Registered</option><option value="not_registered">Not registered</option></select></div>
+            <div className="space-y-2"><Label htmlFor="token-filter">Token / SMS</Label><select id="token-filter" className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={tokenFilter} onChange={(event) => setTokenFilter(event.target.value)}><option value="all">All token states</option><option value="available">Valid & exportable</option><option value="pending">Pending SMS / export</option><option value="sent">SMS sent / delivered</option><option value="failed">SMS failed</option><option value="used">Token used</option><option value="no_token">No token</option></select></div>
+            <div className="space-y-2"><Label htmlFor="vote-filter">Voting status</Label><select id="vote-filter" className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={voteFilter} onChange={(event) => setVoteFilter(event.target.value)}><option value="all">All voting states</option><option value="not_voted">Not voted</option><option value="voted">Voted</option></select></div>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
+            <p className="text-sm text-emerald-950"><strong>{selectedIds.size}</strong> student{selectedIds.size === 1 ? '' : 's'} selected <span className="text-xs text-emerald-800">· {filteredExportableIds.length} exportable in this view</span></p>
+            <div className="flex flex-wrap gap-2">
+              {selectedIds.size > 0 && <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Clear selection</Button>}
+              <Button size="sm" className="bg-emerald-700 hover:bg-emerald-800" disabled={!selectedIds.size || busyId !== ''} onClick={() => void exportSelectedTokens()}>
+                {busyId === 'export-selected' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}Export selected OTPs
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card><CardHeader><CardTitle className="text-lg">Student registration and SMS status</CardTitle><p className="mt-1 text-xs text-muted-foreground">Raw voting tokens never appear in this table. Participation never reveals ballot choices.</p></CardHeader>
+        <CardContent className="overflow-x-auto p-0"><Table><TableHeader><TableRow><TableHead className="w-12"><Checkbox aria-label="Select all exportable students in this filtered view" checked={allFilteredSelected} disabled={!filteredExportableIds.length} onCheckedChange={(checked) => toggleFiltered(checked === true)} /></TableHead><TableHead>Student</TableHead><TableHead>Programme</TableHead><TableHead>Registration / phone</TableHead><TableHead>Token / SMS</TableHead><TableHead>Vote</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+          <TableBody>{loading ? <TableRow><TableCell colSpan={7} className="py-12 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow> : filtered.length === 0 ? <TableRow><TableCell colSpan={7} className="py-12 text-center text-muted-foreground">{voters.length ? 'No students match these filters.' : 'No eligible students imported yet.'}</TableCell></TableRow> : filtered.map((voter) => <TableRow key={voter.id} className={selectedIds.has(voter.id) ? 'bg-emerald-50/50' : ''}>
+            <TableCell><Checkbox aria-label={`Select ${voter.name} for OTP export`} checked={selectedIds.has(voter.id)} disabled={!hasExportableToken(voter)} onCheckedChange={(checked) => toggleVoter(voter.id, checked === true)} /></TableCell>
             <TableCell><p className="font-medium">{voter.name}</p><p className="mt-1 font-mono text-xs text-muted-foreground">{voter.institutionalId}</p></TableCell>
             <TableCell><p className="text-xs">{voter.department || '—'}</p><p className="mt-1 text-xs text-muted-foreground">{voter.yearGroup || '—'}</p></TableCell>
             <TableCell>{voter.registeredAt ? <><p className="text-xs font-medium">{voter.phone}</p><p className="mt-1 text-xs text-muted-foreground">{voter.phoneVerified ? 'Phone verified' : 'Registered'} · {new Date(voter.registeredAt).toLocaleDateString('en-GB')}</p></> : <Badge variant="outline">Not registered</Badge>}</TableCell>

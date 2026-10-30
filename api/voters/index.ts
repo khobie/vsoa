@@ -138,6 +138,51 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({ voters, summary, smsConfigured: isSmsConfigured() })
     }
 
+    if (req.body?.action === 'export-selected-tokens') {
+      const requested = Array.isArray(req.body?.voterIds) ? req.body.voterIds : []
+      const voterIds = [...new Set(requested.map((id: unknown) => String(id)))]
+      if (!voterIds.length || voterIds.length > 500) {
+        return res.status(400).json({ error: 'Select between 1 and 500 students for token export' })
+      }
+      if (voterIds.some((id) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))) {
+        return res.status(400).json({ error: 'The selected voter identifiers are invalid' })
+      }
+      const students = await sql`
+        SELECT u.id, u.institutional_id, u.name, u.department, u.year_group, r.phone,
+               t.id, t.encrypted_token,
+          (SELECT sm.status FROM sms_messages sm WHERE sm.token_id = t.id ORDER BY sm.created_at DESC LIMIT 1) AS sms_status
+        FROM student_registrations r
+        JOIN users u ON u.id = r.user_id AND u.is_active = true
+        JOIN voting_tokens t ON t.user_id = r.user_id AND t.election_id = r.election_id
+        LEFT JOIN participation_records p ON p.voter_id = r.user_id AND p.election_id = r.election_id
+        WHERE r.election_id = ${election.id} AND u.id = ANY(${voterIds}::uuid[]) AND p.id IS NULL
+          AND t.consumed_at IS NULL AND t.invalidated_at IS NULL AND t.expires_at > now()
+        ORDER BY u.name`
+      if (!students.length) {
+        return res.status(404).json({ error: 'None of the selected students has a valid, unused voting token available for export' })
+      }
+      const lines = ['student_id,full_name,programme,year_group,telephone,voting_token,message,sms_status']
+      for (const student of students) {
+        const token = decryptToken(student.encrypted_token)
+        const message = `School of Anaesthesia Ridge SRC | Student ID: ${student.institutional_id} | Voting token: ${token} | Expires in ${tokenExpiryHours()} hours. Use once to sign in.`
+        lines.push([
+          student.institutional_id, student.name, student.department || '', student.year_group || '',
+          student.phone, token, message, student.sms_status || 'pending',
+        ].map(csvCell).join(','))
+      }
+      await recordAudit(sql, {
+        type: 'SELECTED_VOTING_TOKENS_EXPORTED', actorId: access.user.id,
+        actorLabel: access.user.institutionalId, electionId: election.id,
+        detail: `${students.length} selected voting token(s) decrypted for authorized administrator export.`,
+      }).catch(() => undefined)
+      res.setHeader('Cache-Control', 'no-store')
+      return res.status(200).json({
+        csv: lines.join('\r\n'),
+        exported: students.length,
+        skipped: voterIds.length - students.length,
+      })
+    }
+
     const rows = Array.isArray(req.body?.students) ? req.body.students : []
     if (!rows.length) return res.status(400).json({ error: 'Add at least one student to the import' })
     if (rows.length > 500) return res.status(400).json({ error: 'Import no more than 500 students at a time' })
