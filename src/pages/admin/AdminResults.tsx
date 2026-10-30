@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { AlertTriangle, Calculator, CheckCircle2, ClipboardCheck, Loader2, RefreshCw, Send, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, Calculator, CheckCircle2, ClipboardCheck, FileDown, Loader2, RefreshCw, Send, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -129,6 +129,19 @@ export default function AdminResults() {
     }
   }
 
+  async function downloadPdf(election: StaffElection) {
+    setAction(`${election.id}:pdf`)
+    setError('')
+    try {
+      const { downloadResultsPdf } = await import('@/lib/results-pdf')
+      await downloadResultsPdf(election)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to generate the results PDF')
+    } finally {
+      setAction('')
+    }
+  }
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -221,6 +234,15 @@ export default function AdminResults() {
               <Separator />
 
               <div className="flex flex-wrap items-center gap-3">
+                {election.tallyId && (
+                  <Button variant="outline" className="border-emerald-300 text-emerald-800 hover:bg-emerald-50" disabled={busy} onClick={() => void downloadPdf(election)}>
+                    {action === `${election.id}:pdf`
+                      ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                      : <FileDown className="mr-1.5 h-4 w-4" />}
+                    Download results PDF
+                  </Button>
+                )}
+
                 {!isPublished && (
                   <Button variant="outline" disabled={busy} onClick={() => void runAction(election, 'compute-tally')}>
                     {action === `${election.id}:compute-tally`
