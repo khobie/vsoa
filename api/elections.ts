@@ -378,6 +378,36 @@ export default async function handler(req: any, res: any) {
       if (req.method === 'GET' && candidatePerformanceRequest) return await candidatePerformance(sql, res)
       if (req.method === 'GET') return await staffResults(sql, res)
       const action = String(req.body?.action ?? '')
+      if (action === 'extend-voting') {
+        if (!user.roles.includes('super_admin')) {
+          return res.status(403).json({ error: 'Full administrator access is required to extend voting' })
+        }
+        const endTime = Date.parse(String(req.body?.endAt ?? ''))
+        if (!Number.isFinite(endTime) || endTime <= Date.now()) {
+          return res.status(400).json({ error: 'The new closing time must be valid and in the future' })
+        }
+        const rows = await sql`SELECT e.id, e.status, e.start_at, e.end_at,
+            EXISTS (SELECT 1 FROM result_publications rp WHERE rp.election_id = e.id
+              AND (rp.verified_at IS NOT NULL OR rp.published_at IS NOT NULL)) AS certified
+          FROM elections e WHERE e.slug = 'el-src-2026'`
+        const election = rows[0]
+        if (!election) return res.status(404).json({ error: 'SRC election not found' })
+        if (election.status === 'PUBLISHED' || election.certified) {
+          return res.status(409).json({ error: 'Voting cannot be extended after results have been verified or published' })
+        }
+        if (endTime <= new Date(election.end_at).getTime()) {
+          return res.status(409).json({ error: 'The new closing time must be later than the current closing time' })
+        }
+        const endIso = new Date(endTime).toISOString()
+        await sql`UPDATE elections SET end_at = ${endIso}, status = 'OPEN', updated_at = now()
+          WHERE id = ${election.id}`
+        await recordAudit(sql, {
+          type: 'ELECTION_VOTING_EXTENDED', actorId: user.id, actorLabel: user.institutionalId, electionId: election.id,
+          detail: `SRC voting extended from ${new Date(election.end_at).toISOString()} through ${endIso}.`,
+        }).catch(() => undefined)
+        res.setHeader('Cache-Control', 'no-store')
+        return res.status(200).json({ schedule: { startAt: election.start_at, endAt: endIso } })
+      }
       if (action === 'update-schedule') {
         if (!user.roles.includes('super_admin')) {
           return res.status(403).json({ error: 'Full administrator access is required to change the voting schedule' })
