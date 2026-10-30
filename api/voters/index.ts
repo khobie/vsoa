@@ -103,7 +103,7 @@ export default async function handler(req: any, res: any) {
         SELECT u.id, u.institutional_id AS "institutionalId", u.name, u.email,
                u.faculty, u.department, u.year_group AS "yearGroup", u.is_active AS "isActive",
                r.phone, r.phone_verified AS "phoneVerified", r.registered_at AS "registeredAt",
-               t.id AS tokenId, t.created_at AS "tokenCreatedAt", t.expires_at AS "tokenExpiresAt",
+               t.id AS "tokenId", t.created_at AS "tokenCreatedAt", t.expires_at AS "tokenExpiresAt",
                t.consumed_at AS "tokenConsumedAt", t.invalidated_at AS "tokenInvalidatedAt",
                sm.status AS "smsStatus", sm.detail AS "smsDetail", sm.sent_at AS "smsSentAt",
                pr.accepted_at AS "votedAt"
