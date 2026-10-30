@@ -138,6 +138,51 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({ voters, summary, smsConfigured: isSmsConfigured() })
     }
 
+    if (req.body?.action === 'view-voter-token') {
+      const voterId = String(req.body?.voterId ?? '')
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(voterId)) {
+        return res.status(400).json({ error: 'A valid student selection is required' })
+      }
+      const rows = await sql`
+        SELECT u.institutional_id AS "institutionalId", u.name,
+               t.id AS "tokenId", t.encrypted_token AS "encryptedToken",
+               t.created_at AS "createdAt", t.expires_at AS "expiresAt",
+               t.consumed_at AS "consumedAt", t.invalidated_at AS "invalidatedAt",
+               t.invalidated_reason AS "invalidatedReason", t.expires_at <= now() AS expired,
+               pr.accepted_at AS "votedAt",
+          (SELECT sm.status FROM sms_messages sm WHERE sm.token_id = t.id ORDER BY sm.created_at DESC LIMIT 1) AS "smsStatus"
+        FROM voter_eligibility ve
+        JOIN users u ON u.id = ve.voter_id
+        JOIN LATERAL (
+          SELECT id, encrypted_token, created_at, expires_at, consumed_at, invalidated_at, invalidated_reason
+          FROM voting_tokens vt WHERE vt.user_id = ve.voter_id AND vt.election_id = ve.election_id
+          ORDER BY vt.created_at DESC LIMIT 1
+        ) t ON true
+        LEFT JOIN participation_records pr ON pr.voter_id = ve.voter_id AND pr.election_id = ve.election_id
+        WHERE ve.election_id = ${election.id} AND ve.voter_id = ${voterId}`
+      const student = rows[0]
+      if (!student) return res.status(404).json({ error: 'No voting OTP has been generated for this student' })
+      await recordAudit(sql, {
+        type: 'VOTING_TOKEN_VIEWED', actorId: access.user.id,
+        actorLabel: access.user.institutionalId, electionId: election.id,
+        detail: `Administrator viewed the latest voting OTP for ${student.institutionalId}; the token value was not logged.`,
+      }).catch(() => undefined)
+      res.setHeader('Cache-Control', 'no-store')
+      return res.status(200).json({
+        token: decryptToken(student.encryptedToken),
+        institutionalId: student.institutionalId,
+        name: student.name,
+        createdAt: student.createdAt,
+        expiresAt: student.expiresAt,
+        consumedAt: student.consumedAt,
+        invalidatedAt: student.invalidatedAt,
+        invalidatedReason: student.invalidatedReason,
+        expired: student.expired,
+        votedAt: student.votedAt,
+        smsStatus: student.smsStatus,
+      })
+    }
+
     if (req.body?.action === 'export-selected-tokens') {
       const requested = Array.isArray(req.body?.voterIds) ? req.body.voterIds : []
       const voterIds = [...new Set(requested.map((id: unknown) => String(id)))]

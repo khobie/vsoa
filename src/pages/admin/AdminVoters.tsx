@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Upload, Search, ShieldCheck, FileSpreadsheet, Users, CheckCircle2, RefreshCw,
-  Download, Loader2, KeyRound, MessageSquareText, Phone, Send, Pencil, Filter, X,
+  Download, Loader2, KeyRound, MessageSquareText, Phone, Send, Pencil, Filter, X, Eye, Copy,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,6 +21,12 @@ interface Voter {
   tokenConsumedAt: string | null; tokenInvalidatedAt: string | null
   smsStatus: 'pending' | 'sent' | 'delivered' | 'failed' | null
   smsDetail: string | null; smsSentAt: string | null; votedAt: string | null
+}
+interface TokenDetails {
+  token: string; institutionalId: string; name: string
+  createdAt: string; expiresAt: string; consumedAt: string | null
+  invalidatedAt: string | null; invalidatedReason: string | null
+  expired: boolean; votedAt: string | null; smsStatus: string | null
 }
 interface Summary { total: number; registered: number; tokensGenerated: number; sent: number; delivered: number; failed: number; pending: number; voted: number; turnout: number }
 interface ImportStudent { institutionalId: string; name: string; email: string; faculty: string; department: string; yearGroup: string }
@@ -96,6 +102,13 @@ function smsStyle(voter: Voter) {
   return 'border-amber-200 bg-amber-50 text-amber-700'
 }
 
+function formatTokenDate(value: string) {
+  return new Date(value).toLocaleString('en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    hour12: false, timeZone: 'Africa/Accra',
+  })
+}
+
 export default function AdminVoters() {
   const [voters, setVoters] = useState<Voter[]>([]); const [summary, setSummary] = useState<Summary>(emptySummary)
   const [smsConfigured, setSmsConfigured] = useState(false); const [loading, setLoading] = useState(true)
@@ -107,6 +120,7 @@ export default function AdminVoters() {
   const [importErrors, setImportErrors] = useState<string[]>([]); const [importing, setImporting] = useState(false)
   const [busyId, setBusyId] = useState(''); const [notice, setNotice] = useState('')
   const [correctionId, setCorrectionId] = useState(''); const [correctionPhone, setCorrectionPhone] = useState('')
+  const [tokenDetails, setTokenDetails] = useState<TokenDetails | null>(null)
 
   const loadVoters = useCallback(async () => {
     setLoading(true)
@@ -234,6 +248,27 @@ export default function AdminVoters() {
     finally { setBusyId('') }
   }
 
+  async function viewToken(voter: Voter) {
+    setBusyId(`view-${voter.id}`); setNotice('')
+    try {
+      const response = await fetch('/api/voters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ action: 'view-voter-token', electionId: 'el-src-2026', voterId: voter.id }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'Unable to view this voting OTP')
+      setTokenDetails(data)
+    } catch (cause) { setNotice(cause instanceof Error ? cause.message : 'Unable to view this voting OTP') }
+    finally { setBusyId('') }
+  }
+
+  async function copyToken() {
+    if (!tokenDetails) return
+    await navigator.clipboard.writeText(tokenDetails.token)
+    setNotice(`OTP copied for ${tokenDetails.institutionalId}. Keep it secure and share it only with that student.`)
+  }
+
   function downloadTemplate() {
     const csv = 'student_id,full_name,email,programme,year_group\nSAR-0001,Example Student,,Anaesthesia,Level 300\n'
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); const link = document.createElement('a')
@@ -304,10 +339,34 @@ export default function AdminVoters() {
             <TableCell><p className="font-medium">{voter.name}</p><p className="mt-1 font-mono text-xs text-muted-foreground">{voter.institutionalId}</p></TableCell>
             <TableCell><p className="text-xs">{voter.department || '—'}</p><p className="mt-1 text-xs text-muted-foreground">{voter.yearGroup || '—'}</p></TableCell>
             <TableCell>{voter.registeredAt ? <><p className="text-xs font-medium">{voter.phone}</p><p className="mt-1 text-xs text-muted-foreground">{voter.phoneVerified ? 'Phone verified' : 'Registered'} · {new Date(voter.registeredAt).toLocaleDateString('en-GB')}</p></> : <Badge variant="outline">Not registered</Badge>}</TableCell>
-            <TableCell><Badge variant="outline" className={smsStyle(voter)}>{smsLabel(voter)}</Badge>{voter.smsDetail && <p className="mt-1 max-w-48 text-xs text-red-600">{voter.smsDetail}</p>}</TableCell>
+            <TableCell><Badge variant="outline" className={smsStyle(voter)}>{smsLabel(voter)}</Badge>{voter.tokenConsumedAt && <p className="mt-1 text-xs font-medium text-blue-700">Used {formatTokenDate(voter.tokenConsumedAt)} GMT</p>}{voter.smsDetail && <p className="mt-1 max-w-48 text-xs text-red-600">{voter.smsDetail}</p>}</TableCell>
             <TableCell>{voter.votedAt ? <Badge className="bg-emerald-600">Voted</Badge> : <Badge variant="outline">Not voted</Badge>}</TableCell>
-            <TableCell><div className="flex justify-end gap-1">{voter.registeredAt && <><Button variant="ghost" size="sm" title="Correct telephone number" disabled={busyId !== '' || Boolean(voter.votedAt)} onClick={() => { setCorrectionId(voter.institutionalId); setCorrectionPhone(voter.phone ?? '') }}><Pencil className="h-3.5 w-3.5" /></Button><Button variant="outline" size="sm" disabled={busyId !== '' || Boolean(voter.votedAt)} onClick={() => void tokenAction({ action: 'reissue', institutionalId: voter.institutionalId }, voter.institutionalId)}>{busyId === voter.institutionalId ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1 h-3.5 w-3.5" />}Reissue</Button></>}</div></TableCell>
+            <TableCell><div className="flex justify-end gap-1">{voter.tokenCreatedAt && <Button variant="ghost" size="sm" title="View voting OTP" disabled={busyId !== ''} onClick={() => void viewToken(voter)}>{busyId === `view-${voter.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}</Button>}{voter.registeredAt && <><Button variant="ghost" size="sm" title="Correct telephone number" disabled={busyId !== '' || Boolean(voter.votedAt)} onClick={() => { setCorrectionId(voter.institutionalId); setCorrectionPhone(voter.phone ?? '') }}><Pencil className="h-3.5 w-3.5" /></Button><Button variant="outline" size="sm" disabled={busyId !== '' || Boolean(voter.votedAt)} onClick={() => void tokenAction({ action: 'reissue', institutionalId: voter.institutionalId }, voter.institutionalId)}>{busyId === voter.institutionalId ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1 h-3.5 w-3.5" />}Reissue</Button></>}</div></TableCell>
           </TableRow>)}</TableBody></Table></CardContent></Card>
+
+      <Dialog open={Boolean(tokenDetails)} onOpenChange={(open) => { if (!open) setTokenDetails(null) }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><KeyRound className="h-5 w-5 text-emerald-700" /> Student voting OTP</DialogTitle>
+            <DialogDescription>{tokenDetails?.name} · {tokenDetails?.institutionalId}</DialogDescription>
+          </DialogHeader>
+          {tokenDetails && <div className="space-y-4">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-center">
+              <p className="font-mono text-3xl font-bold tracking-[0.2em] text-emerald-950">{tokenDetails.token}</p>
+              <Badge className="mt-3" variant="outline">{tokenDetails.consumedAt ? 'Used for sign-in' : tokenDetails.invalidatedAt ? 'Replaced / invalidated' : tokenDetails.expired ? 'Expired' : 'Valid and unused'}</Badge>
+            </div>
+            <Button variant="outline" className="w-full" onClick={() => void copyToken()}><Copy className="mr-2 h-4 w-4" />Copy OTP</Button>
+            <dl className="space-y-3 rounded-lg bg-slate-50 p-4 text-sm">
+              <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Generated</dt><dd className="text-right font-medium">{formatTokenDate(tokenDetails.createdAt)} GMT</dd></div>
+              <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Expires</dt><dd className="text-right font-medium">{formatTokenDate(tokenDetails.expiresAt)} GMT</dd></div>
+              <div className="flex justify-between gap-4"><dt className="text-muted-foreground">OTP used for sign-in</dt><dd className="text-right font-semibold text-blue-700">{tokenDetails.consumedAt ? `${formatTokenDate(tokenDetails.consumedAt)} GMT` : 'Not used'}</dd></div>
+              {tokenDetails.invalidatedAt && <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Invalidated</dt><dd className="text-right font-medium">{formatTokenDate(tokenDetails.invalidatedAt)} GMT</dd></div>}
+              <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Vote recorded</dt><dd className="text-right font-medium">{tokenDetails.votedAt ? `${formatTokenDate(tokenDetails.votedAt)} GMT` : 'Not voted'}</dd></div>
+            </dl>
+            <p className="flex items-start gap-2 text-xs text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />Share this OTP only with the selected student. Viewing is audited; the OTP value is never written to the audit log.</p>
+          </div>}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={Boolean(correctionId)} onOpenChange={(open) => { if (!open) setCorrectionId('') }}><DialogContent><DialogHeader><DialogTitle>Correct registered telephone</DialogTitle><DialogDescription>Update the telephone for {correctionId}. Verification will be reset; the voting token remains protected.</DialogDescription></DialogHeader><div className="space-y-4"><div className="space-y-2"><Label htmlFor="correction-phone">Telephone number</Label><Input id="correction-phone" value={correctionPhone} onChange={(event) => setCorrectionPhone(event.target.value)} /></div><Button className="w-full" disabled={!correctionPhone || busyId !== ''} onClick={() => void tokenAction({ action: 'correct-phone', institutionalId: correctionId, phone: correctionPhone }, correctionId)}>{busyId === correctionId && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save corrected telephone</Button></div></DialogContent></Dialog>
     </div>
