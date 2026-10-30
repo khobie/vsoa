@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useElections } from '@/components/elections-provider'
+import CandidatePerformance from '@/components/CandidatePerformance'
 import { formatDateTime } from '@/lib/mock-data'
 
 interface Summary {
@@ -186,6 +187,8 @@ export default function EcDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <CandidatePerformance />
 
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-4">

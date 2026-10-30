@@ -76,6 +76,126 @@ async function ecDashboard(sql: Sql, res: any) {
   return res.status(200).json({ voterStats, trend })
 }
 
+async function candidatePerformance(sql: Sql, res: any) {
+  const electionRows = await sql`
+    SELECT e.id, e.slug, e.name,
+           lower(CASE WHEN e.status = 'OPEN' AND now() < e.start_at THEN 'SCHEDULED'
+                      WHEN e.status = 'OPEN' AND now() > e.end_at THEN 'CLOSED'
+                      ELSE e.status::text END) AS status,
+           e.start_at AS "startAt", e.end_at AS "endAt"
+    FROM elections e WHERE e.slug = 'el-src-2026'`
+  const election = electionRows[0]
+  if (!election) return res.status(404).json({ error: 'SRC election not found' })
+
+  const standingsRows = await sql`
+    WITH candidate_counts AS (
+      SELECT bs.candidate_id, count(*)::int AS votes
+      FROM ballot_selections bs
+      JOIN anonymous_ballots ab ON ab.id = bs.ballot_id
+      WHERE ab.election_id = ${election.id} AND bs.candidate_id IS NOT NULL
+      GROUP BY bs.candidate_id
+    ), position_counts AS (
+      SELECT p.id, count(bs.candidate_id)::int AS total_valid,
+             count(*) FILTER (WHERE bs.candidate_id IS NULL)::int AS blank
+      FROM positions p
+      LEFT JOIN ballot_selections bs ON bs.position_id = p.id
+      LEFT JOIN anonymous_ballots ab ON ab.id = bs.ballot_id AND ab.election_id = ${election.id}
+      WHERE p.election_id = ${election.id}
+      GROUP BY p.id
+    )
+    SELECT p.id AS "positionId", p.title, p.sort_order,
+           c.id AS "candidateId", c.name,
+           COALESCE(cc.votes, 0)::int AS votes,
+           COALESCE(pc.total_valid, 0)::int AS "totalValid",
+           COALESCE(pc.blank, 0)::int AS blank
+    FROM positions p
+    JOIN candidates c ON c.position_id = p.id AND c.status = 'APPROVED'
+    LEFT JOIN candidate_counts cc ON cc.candidate_id = c.id
+    LEFT JOIN position_counts pc ON pc.id = p.id
+    WHERE p.election_id = ${election.id}
+    ORDER BY p.sort_order, c.name`
+
+  const trend = await sql`
+    WITH bounds AS (
+      SELECT date_trunc('hour', start_at) AS start_hour,
+             date_trunc('hour', LEAST(now(), end_at)) AS end_hour
+      FROM elections WHERE id = ${election.id}
+    ), hours AS (
+      SELECT generate_series(start_hour, end_hour, interval '1 hour') AS hour
+      FROM bounds WHERE end_hour >= start_hour
+    ), hourly AS (
+      SELECT date_trunc('hour', ab.accepted_at) AS hour, bs.candidate_id, count(*)::int AS ballots
+      FROM ballot_selections bs
+      JOIN anonymous_ballots ab ON ab.id = bs.ballot_id
+      WHERE ab.election_id = ${election.id} AND bs.candidate_id IS NOT NULL
+      GROUP BY date_trunc('hour', ab.accepted_at), bs.candidate_id
+    )
+    SELECT h.hour, p.id AS "positionId", c.id AS "candidateId",
+           COALESCE(hourly.ballots, 0)::int AS ballots,
+           SUM(COALESCE(hourly.ballots, 0)) OVER (PARTITION BY c.id ORDER BY h.hour)::int AS cumulative
+    FROM hours h
+    CROSS JOIN candidates c
+    JOIN positions p ON p.id = c.position_id
+    LEFT JOIN hourly ON hourly.hour = h.hour AND hourly.candidate_id = c.id
+    WHERE p.election_id = ${election.id} AND c.status = 'APPROVED'
+    ORDER BY p.sort_order, c.name, h.hour`
+
+  const summaryRows = await sql`
+    SELECT
+      (SELECT count(*)::int FROM anonymous_ballots WHERE election_id = ${election.id}) AS "totalVotesCast",
+      (SELECT count(*)::int FROM ballot_selections bs
+        JOIN anonymous_ballots ab ON ab.id = bs.ballot_id
+        WHERE ab.election_id = ${election.id} AND bs.candidate_id IS NOT NULL) AS "totalValidVotes",
+      (SELECT count(*)::int FROM ballot_selections bs
+        JOIN anonymous_ballots ab ON ab.id = bs.ballot_id
+        WHERE ab.election_id = ${election.id} AND bs.candidate_id IS NULL) AS "totalBlankVotes"`
+
+  const positions: any[] = []
+  for (const row of standingsRows) {
+    let position = positions.find((item) => item.positionId === row.positionId)
+    if (!position) {
+      position = {
+        positionId: row.positionId,
+        title: row.title,
+        totalValid: row.totalValid,
+        blank: row.blank,
+        candidates: [],
+      }
+      positions.push(position)
+    }
+    position.candidates.push({
+      candidateId: row.candidateId,
+      name: row.name,
+      votes: row.votes,
+      percentage: 0,
+      isLeading: false,
+    })
+  }
+  for (const position of positions) {
+    const highest = Math.max(0, ...position.candidates.map((candidate: any) => candidate.votes))
+    const ranked = [...position.candidates].sort((a, b) => b.votes - a.votes)
+    const leaders = highest > 0 ? position.candidates.filter((candidate: any) => candidate.votes === highest) : []
+    position.margin = ranked.length > 1 ? ranked[0].votes - ranked[1].votes : highest
+    position.leadingCandidate = leaders.map((candidate: any) => candidate.name).join(' / ') || 'No votes yet'
+    position.hasTie = leaders.length > 1
+    for (const candidate of position.candidates) {
+      candidate.percentage = position.totalValid > 0
+        ? Math.round((candidate.votes / position.totalValid) * 1000) / 10
+        : 0
+      candidate.isLeading = highest > 0 && candidate.votes === highest
+    }
+  }
+
+  res.setHeader('Cache-Control', 'no-store')
+  return res.status(200).json({
+    election,
+    positions,
+    trend,
+    summary: summaryRows[0],
+    asOf: new Date().toISOString(),
+  })
+}
+
 async function computeTally(sql: Sql, req: any, res: any, user: any) {
   const electionRef = String(req.body?.electionId ?? '')
   const rows = await sql`
@@ -250,10 +370,12 @@ export default async function handler(req: any, res: any) {
 
     const staffResultsRequest = String(req.query?.staffResults ?? '') === '1'
     const ecDashboardRequest = String(req.query?.ecDashboard ?? '') === '1'
-    if (req.method === 'POST' || staffResultsRequest || ecDashboardRequest) {
+    const candidatePerformanceRequest = String(req.query?.candidatePerformance ?? '') === '1'
+    if (req.method === 'POST' || staffResultsRequest || ecDashboardRequest || candidatePerformanceRequest) {
       const user = await requireStaff(req, res)
       if (!user) return
       if (req.method === 'GET' && ecDashboardRequest) return await ecDashboard(sql, res)
+      if (req.method === 'GET' && candidatePerformanceRequest) return await candidatePerformance(sql, res)
       if (req.method === 'GET') return await staffResults(sql, res)
       const action = String(req.body?.action ?? '')
       if (action === 'update-schedule') {

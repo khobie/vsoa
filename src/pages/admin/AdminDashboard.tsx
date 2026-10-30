@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { turnoutPercent, formatDateTime, type TurnoutPoint } from '@/lib/mock-data'
 import { useElections, type RegistrationSettings } from '@/components/elections-provider'
 import { useAuth } from '@/components/auth-provider'
+import CandidatePerformance from '@/components/CandidatePerformance'
 import EcDashboard from './EcDashboard'
 
 export default function AdminDashboard() {
@@ -249,6 +250,8 @@ export default function AdminDashboard() {
           )}
         </CardContent>
       </Card>
+
+      <CandidatePerformance />
 
       <Card>
         <CardHeader className="flex-row items-center justify-between">
