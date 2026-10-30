@@ -20,10 +20,10 @@ export default function Landing() {
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <InstitutionMark />
           <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={() => navigate('/login')} disabled>
+            <Button variant="ghost" onClick={() => navigate('/login')} disabled={srcElection?.status !== 'open'}>
               Sign in
             </Button>
-            <Button onClick={() => navigate('/login')} disabled>Vote now</Button>
+            <Button onClick={() => navigate('/login')} disabled={srcElection?.status !== 'open'}>Vote now</Button>
           </div>
         </div>
       </header>
@@ -44,7 +44,7 @@ export default function Landing() {
             </div>
           )}
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button size="lg" className="bg-amber-400 text-blue-950 hover:bg-amber-300" onClick={() => navigate('/login')} disabled>
+            <Button size="lg" className="bg-amber-400 text-blue-950 hover:bg-amber-300" onClick={() => navigate('/login')} disabled={srcElection?.status !== 'open'}>
               <Vote className="mr-2 h-5 w-5" /> Cast your ballot
             </Button>
             <Button
@@ -153,7 +153,7 @@ export default function Landing() {
                 </div>
                 <div className="mt-4">
                   {e.status === 'open' && (
-                    <Button onClick={() => navigate('/login')} disabled>
+                    <Button onClick={() => navigate('/login')}>
                       Sign in to vote <ChevronRight className="ml-1 h-4 w-4" />
                     </Button>
                   )}
