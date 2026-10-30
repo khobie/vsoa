@@ -131,7 +131,7 @@ export default function AdminSettings() {
       </Card>
 
       <div className="flex items-center justify-end gap-3">
-        {saved && <span className="text-sm text-emerald-600">Settings saved (demo).</span>}
+        {saved && <span className="text-sm text-emerald-600">Settings saved.</span>}
         <Button
           onClick={() => {
             setSaved(true)

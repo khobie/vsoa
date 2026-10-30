@@ -288,6 +288,62 @@ export default async function handler(req: any, res: any) {
         res.setHeader('Cache-Control', 'no-store')
         return res.status(200).json({ schedule: { startAt: startIso, endAt: endIso } })
       }
+      if (action === 'remove-demo-data') {
+        if (!user.roles.includes('super_admin')) {
+          return res.status(403).json({ error: 'Full administrator access is required to remove demo data' })
+        }
+        const srcRows = await sql`SELECT id FROM elections WHERE slug = 'el-src-2026'`
+        const srcElection = srcRows[0]
+        if (!srcElection) return res.status(404).json({ error: 'SRC election not found' })
+        const srcActivity = await sql`
+          SELECT (SELECT count(*)::int FROM anonymous_ballots WHERE election_id = ${srcElection.id}) AS ballots,
+                 (SELECT count(*)::int FROM participation_records WHERE election_id = ${srcElection.id}) AS participated`
+        if (srcActivity[0].ballots > 0 || srcActivity[0].participated > 0) {
+          return res.status(409).json({ error: 'Demo records can only be removed before voting starts' })
+        }
+        const demoElectionSlugs = ['el-pgsa-2026', 'el-sci-2026', 'el-cs-2025']
+        const protectedElections = await sql`
+          SELECT e.slug FROM elections e
+          WHERE e.slug = ANY(${demoElectionSlugs})
+            AND (EXISTS (SELECT 1 FROM anonymous_ballots ab WHERE ab.election_id = e.id)
+              OR EXISTS (SELECT 1 FROM participation_records pr WHERE pr.election_id = e.id))`
+        if (protectedElections.length) {
+          return res.status(409).json({ error: 'A demo election contains voting records and cannot be removed automatically' })
+        }
+        const demoCandidateNames = [
+          'Kwame Mensah', 'Abena Owusu', 'Yaw Darko',
+          'Akosua Boateng', 'Kwesi Appiah',
+          'Efua Adjei', 'Daniel Osei',
+          'Gifty Ankrah', 'Mawuli Agbeko',
+        ]
+        const removed = await sql.transaction([
+          sql`DELETE FROM audit_events
+              WHERE (type = 'DATABASE_SEEDED' AND detail ILIKE '%Synthetic demo%')
+                 OR election_id IN (SELECT id FROM elections WHERE slug = ANY(${demoElectionSlugs}))
+              RETURNING id`,
+          sql`DELETE FROM candidates
+              WHERE application_id IS NULL AND name = ANY(${demoCandidateNames})
+                AND position_id IN (SELECT id FROM positions WHERE election_id = ${srcElection.id})
+              RETURNING id`,
+          sql`DELETE FROM elections WHERE slug = ANY(${demoElectionSlugs}) RETURNING id`,
+          sql`DELETE FROM users
+              WHERE institutional_id = '10987654' AND email = 'aserwaa@student.sar.test'
+                AND NOT EXISTS (SELECT 1 FROM participation_records WHERE voter_id = users.id)
+              RETURNING id`,
+        ])
+        const summary = {
+          candidates: removed[1].length,
+          elections: removed[2].length,
+          voters: removed[3].length,
+        }
+        await recordAudit(sql, {
+          type: 'PRODUCTION_DATA_CLEANED', actorId: user.id, actorLabel: user.institutionalId,
+          electionId: srcElection.id,
+          detail: `Removed ${summary.candidates} demo candidates, ${summary.elections} demo elections, and ${summary.voters} demo voter before voting opened.`,
+        }).catch(() => undefined)
+        res.setHeader('Cache-Control', 'no-store')
+        return res.status(200).json({ removed: summary })
+      }
       if (action === 'update-registration') {
         if (!user.roles.includes('super_admin')) {
           return res.status(403).json({ error: 'Full administrator access is required to change registration settings' })
