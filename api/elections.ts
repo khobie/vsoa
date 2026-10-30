@@ -256,6 +256,38 @@ export default async function handler(req: any, res: any) {
       if (req.method === 'GET' && ecDashboardRequest) return await ecDashboard(sql, res)
       if (req.method === 'GET') return await staffResults(sql, res)
       const action = String(req.body?.action ?? '')
+      if (action === 'update-schedule') {
+        if (!user.roles.includes('super_admin')) {
+          return res.status(403).json({ error: 'Full administrator access is required to change the voting schedule' })
+        }
+        const startAt = String(req.body?.startAt ?? '')
+        const endAt = String(req.body?.endAt ?? '')
+        const startTime = Date.parse(startAt)
+        const endTime = Date.parse(endAt)
+        if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime <= startTime) {
+          return res.status(400).json({ error: 'A valid voting opening and closing time are required' })
+        }
+        const rows = await sql`SELECT id, status FROM elections WHERE slug = 'el-src-2026'`
+        const election = rows[0]
+        if (!election) return res.status(404).json({ error: 'SRC election not found' })
+        if (election.status === 'PUBLISHED') return res.status(409).json({ error: 'A published election schedule cannot be changed' })
+        const ballots = await sql`
+          SELECT (SELECT count(*)::int FROM anonymous_ballots WHERE election_id = ${election.id}) AS ballots,
+                 (SELECT count(*)::int FROM participation_records WHERE election_id = ${election.id}) AS participated`
+        if (ballots[0].ballots > 0 || ballots[0].participated > 0) {
+          return res.status(409).json({ error: 'The schedule cannot be changed after voting has started' })
+        }
+        const startIso = new Date(startTime).toISOString()
+        const endIso = new Date(endTime).toISOString()
+        await sql`UPDATE elections SET start_at = ${startIso}, end_at = ${endIso}, status = 'OPEN', updated_at = now()
+                  WHERE id = ${election.id}`
+        await recordAudit(sql, {
+          type: 'ELECTION_SCHEDULE_UPDATED', actorId: user.id, actorLabel: user.institutionalId, electionId: election.id,
+          detail: `SRC voting scheduled from ${startIso} through ${endIso}.`,
+        }).catch(() => undefined)
+        res.setHeader('Cache-Control', 'no-store')
+        return res.status(200).json({ schedule: { startAt: startIso, endAt: endIso } })
+      }
       if (action === 'update-registration') {
         if (!user.roles.includes('super_admin')) {
           return res.status(403).json({ error: 'Full administrator access is required to change registration settings' })
@@ -286,9 +318,12 @@ export default async function handler(req: any, res: any) {
     }
 
     const elections = await sql`
-      SELECT id, slug, name, organization, description, status, timezone,
-             start_at AS "startAt", end_at AS "endAt"
-      FROM elections
+      SELECT id, slug, name, organization, description,
+             CASE WHEN e.status = 'OPEN' AND now() < e.start_at THEN 'SCHEDULED'
+                  WHEN e.status = 'OPEN' AND now() > e.end_at THEN 'CLOSED'
+                  ELSE e.status::text END AS status,
+             timezone, start_at AS "startAt", end_at AS "endAt"
+      FROM elections e
       ORDER BY start_at DESC`
 
     const positions = await sql`

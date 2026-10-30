@@ -11,7 +11,7 @@ import { useElections } from '@/components/elections-provider'
 export default function Landing() {
   const navigate = useNavigate()
   const { elections, registration } = useElections()
-  const open = elections.filter((election) => election.status === 'open')
+  const srcElection = elections.find((election) => election.id === 'el-src-2026')
 
   return (
     <div className="min-h-screen bg-white">
@@ -37,10 +37,6 @@ export default function Landing() {
           <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight md:text-5xl">
             Secure, transparent SRC elections
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-lg text-blue-100">
-            Cast your ballot in the School of Anaesthesia Ridge SRC Election —
-            with the secrecy of a paper ballot and the auditability of a public count.
-          </p>
           {registration.announcement && (
             <div className="mx-auto mt-6 flex max-w-2xl items-start gap-3 rounded-lg border border-amber-300/40 bg-amber-300/10 px-4 py-3 text-left text-sm text-amber-100">
               <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
@@ -82,10 +78,12 @@ export default function Landing() {
               View published results
             </Button>
           </div>
-          {open.length > 0 && (
-            <div className="mx-auto mt-10 flex max-w-md items-center justify-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-5 py-2 text-sm text-emerald-300">
-              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-              {open[0].name} — voting closes {formatDateTime(open[0].endAt)}
+          {srcElection && (
+            <div className="mx-auto mt-10 flex max-w-2xl items-center justify-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-5 py-2 text-center text-sm text-emerald-300">
+              <Clock className="h-4 w-4 shrink-0" />
+              <span>
+                {srcElection.name} — voting: {formatDateTime(srcElection.startAt)} to {formatDateTime(srcElection.endAt)}
+              </span>
             </div>
           )}
         </div>
